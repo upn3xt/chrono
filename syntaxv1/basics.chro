@@ -6,8 +6,9 @@ x = 25;
 
 y = 45;
 
-z;
-
 x;
 
 y;
+
+const somevar = x;
+const numbananas = 10;

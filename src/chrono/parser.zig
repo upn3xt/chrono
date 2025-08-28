@@ -34,97 +34,146 @@ pub fn ParseTokens(self: *Parser) !?[]?*ASTNode {
 
                         const varName = self.tokens[self.index].lexeme;
 
-                        //
                         if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
                         self.index += 1;
 
                         tokentype = self.tokens[self.index].token_type;
 
-                        if (tokentype != .PUNCTUATION) return error.ExpectedPuntuaction;
-                        if (tokentype.PUNCTUATION != .colon) return error.ExpectedPuntuactionColon;
-
-                        if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
-                        self.index += 1;
-
-                        tokentype = self.tokens[self.index].token_type;
-
-                        if (tokentype != .IDENTIFIER) return error.ExpectedIdentifier;
-
-                        if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
-                        self.index += 1;
-
-                        tokentype = self.tokens[self.index].token_type;
-
-                        if (tokentype != .OPERATOR) return error.ExpectedOperator;
-                        if (tokentype.OPERATOR != .equal) return error.ExpectedOperatorEqual;
-
-                        if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
-                        self.index += 1;
-
-                        const value = try std.fmt.parseInt(i64, self.tokens[self.index].lexeme, 10);
-
-                        if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
-                        self.index += 1;
-
-                        tokentype = self.tokens[self.index].token_type;
-
+                        // type inference
                         if (tokentype == .OPERATOR) {
-                            if (tokentype.OPERATOR == .equal) return error.UnexpectedOperatorEqual;
-
-                            const oper: u8 = self.tokens[self.index].lexeme[0];
+                            if (tokentype.OPERATOR != .equal) return error.ExpectedOperatorEqual;
 
                             if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
                             self.index += 1;
 
-                            const value2 = try std.fmt.parseInt(i64, self.tokens[self.index].lexeme, 10);
-
-                            if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
-                            self.index += 1;
                             tokentype = self.tokens[self.index].token_type;
 
-                            if (tokentype != .PUNCTUATION) {
-                                std.debug.print("Error: Expected puntuaction type got: {s} with type: {}\n", .{ self.tokens[self.index].lexeme, self.tokens[self.index].token_type });
-                                return error.ExpectedPuntuaction;
+                            if (tokentype == .IDENTIFIER) {
+                                const var_ref = try self.allocator.create(ASTNode);
+                                var_ref.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = varName } } };
+
+                                if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
+                                self.index += 1;
+
+                                tokentype = self.tokens[self.index].token_type;
+                                if (tokentype != .PUNCTUATION) return error.ExpectedPuntuaction;
+                                if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
+
+                                const node = try self.allocator.create(ASTNode);
+                                node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .name = varName, .expression = var_ref } } };
+                                try node_list.append(node);
+
+                                self.index += 1;
+                            } else if (tokentype == .NUMBER) {
+                                const num = try std.fmt.parseInt(i64, self.tokens[self.index].lexeme, 10);
+
+                                if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
+                                self.index += 1;
+
+                                tokentype = self.tokens[self.index].token_type;
+                                if (tokentype != .PUNCTUATION) return error.ExpectedPuntuaction;
+                                if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
+
+                                const num_lit = try self.allocator.create(ASTNode);
+                                num_lit.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = num } } };
+
+                                const node = try self.allocator.create(ASTNode);
+                                node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .name = varName, .expression = num_lit } } };
+
+                                try node_list.append(node);
+                                self.index += 1;
                             }
-                            if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
-
-                            const l_node = try self.allocator.create(ASTNode);
-
-                            l_node.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
-                            const r_node = try self.allocator.create(ASTNode);
-
-                            r_node.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value2 } } };
-
-                            const bin_node = try self.allocator.create(ASTNode);
-
-                            bin_node.* = .{ .kind = .BinaryOperation, .data = .{ .BinaryOperation = .{ .left = l_node, .right = r_node, .operator = oper } } };
-
-                            const varRef = try self.allocator.create(ASTNode);
-
-                            varRef.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = varName } } };
-
-                            const node = try self.allocator.create(ASTNode);
-
-                            node.* = .{ .kind = .VariableDeclaration, .data = .{ .Assignment = .{ .expression = bin_node, .variable = varRef } } };
-
-                            try node_list.append(node);
-
-                            self.index += 1;
-                        } else if (tokentype == .PUNCTUATION) {
-                            if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
-
-                            const x_node = try self.allocator.create(ASTNode);
-
-                            x_node.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
-
-                            const node = try self.allocator.create(ASTNode);
-
-                            node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .expression = x_node, .name = varName } } };
-
-                            try node_list.append(node);
-
-                            self.index += 1;
                         }
+                        // type inference
+                        //
+                        // type annotation
+                        else if (tokentype == .PUNCTUATION) {
+                            if (tokentype.PUNCTUATION != .colon) return error.ExpectedPuntuactionColon;
+
+                            if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
+                            self.index += 1;
+
+                            tokentype = self.tokens[self.index].token_type;
+
+                            if (tokentype != .IDENTIFIER) return error.ExpectedIdentifier;
+
+                            if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
+                            self.index += 1;
+
+                            tokentype = self.tokens[self.index].token_type;
+
+                            if (tokentype != .OPERATOR) return error.ExpectedOperator;
+                            if (tokentype.OPERATOR != .equal) return error.ExpectedOperatorEqual;
+
+                            if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
+                            self.index += 1;
+
+                            const value = try std.fmt.parseInt(i64, self.tokens[self.index].lexeme, 10);
+
+                            if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
+                            self.index += 1;
+
+                            tokentype = self.tokens[self.index].token_type;
+
+                            if (tokentype == .OPERATOR) {
+                                if (tokentype.OPERATOR == .equal) return error.UnexpectedOperatorEqual;
+
+                                const oper: u8 = self.tokens[self.index].lexeme[0];
+
+                                if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
+                                self.index += 1;
+
+                                const value2 = try std.fmt.parseInt(i64, self.tokens[self.index].lexeme, 10);
+
+                                if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
+                                self.index += 1;
+                                tokentype = self.tokens[self.index].token_type;
+
+                                if (tokentype != .PUNCTUATION) {
+                                    std.debug.print("Error: Expected puntuaction type got: {s} with type: {}\n", .{ self.tokens[self.index].lexeme, self.tokens[self.index].token_type });
+                                    return error.ExpectedPuntuaction;
+                                }
+                                if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
+
+                                const l_node = try self.allocator.create(ASTNode);
+
+                                l_node.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
+                                const r_node = try self.allocator.create(ASTNode);
+
+                                r_node.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value2 } } };
+
+                                const bin_node = try self.allocator.create(ASTNode);
+
+                                bin_node.* = .{ .kind = .BinaryOperation, .data = .{ .BinaryOperation = .{ .left = l_node, .right = r_node, .operator = oper } } };
+
+                                const varRef = try self.allocator.create(ASTNode);
+
+                                varRef.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = varName } } };
+
+                                const node = try self.allocator.create(ASTNode);
+
+                                node.* = .{ .kind = .VariableDeclaration, .data = .{ .Assignment = .{ .expression = bin_node, .variable = varRef } } };
+
+                                try node_list.append(node);
+
+                                self.index += 1;
+                            } else if (tokentype == .PUNCTUATION) {
+                                if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
+
+                                const x_node = try self.allocator.create(ASTNode);
+
+                                x_node.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
+
+                                const node = try self.allocator.create(ASTNode);
+
+                                node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .expression = x_node, .name = varName } } };
+
+                                try node_list.append(node);
+
+                                self.index += 1;
+                            }
+                        }
+                        // type annotation
                     },
                     else => break,
                 }
