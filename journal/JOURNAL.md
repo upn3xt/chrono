@@ -47,3 +47,16 @@ And so the development will go like:
 
 
 My focus now is the first point. I want to get some code gen in it and see the assembly generated. Then is, tokenize, parse, analyze, generate, geek, repeat.
+
+## Chrono specs and split up
+
+Today I've talked with some people and they've made me realize the following:
+
+- Find a sweet spot between precision and ergonomics
+- Make a language spec to allow the existance of other compilers for the chrono language.
+- LLVM is harder than I thought but it's cool and got some output from it(not in the compiler tho)
+
+
+With that, the next language changes won't happen in this repository. Rather, in a separate repository for all of the spec of the language. Will be working on 
+the speculation repository then while also learning how to mess with LLVM. At the end the compiler will(likely) be re-writen(again XD) from scratch based on 
+the language speculation and having an idea of how to work with llvm. The goal will be to output some text like hello world in it.
