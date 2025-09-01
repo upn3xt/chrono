@@ -73,7 +73,7 @@ pub fn next(self: *Lexer) Token {
             _ = self.advance();
         }
         const lexeme = self.input[start_pos..self.pos];
-        return Token{ .token_type = .NUMBER, .lexeme = lexeme };
+        return Token{ .token_type = .{ .NUMBER = .int }, .lexeme = lexeme };
     }
 
     if (self.isOperator(current_char)) {
@@ -113,6 +113,33 @@ pub fn next(self: *Lexer) Token {
 
         return Token{ .token_type = symbol, .lexeme = lexeme };
     }
+
+    if (current_char == '"') {
+        _ = self.advance();
+        while (true) {
+            const char2 = self.peek();
+            if (char2 == null or char2.? == '"') break;
+            _ = self.advance();
+        }
+
+        _ = self.advance();
+
+        const lexeme = std.mem.trim(u8, self.input[start_pos..self.pos], "\"");
+        return Token{ .lexeme = lexeme, .token_type = .STRING };
+    }
+    if (current_char == '\'') {
+        _ = self.advance();
+        while (true) {
+            const char2 = self.peek();
+            if (char2 == null or char2.? == '\'') break;
+            _ = self.advance();
+        }
+
+        _ = self.advance();
+
+        const lexeme = std.mem.trim(u8, self.input[start_pos..self.pos], "\'");
+        return Token{ .lexeme = lexeme, .token_type = .CHAR };
+    }
     _ = self.advance();
     const lexeme = self.input[start_pos..self.pos];
     return Token{ .lexeme = lexeme, .token_type = .UNKNOWN };
@@ -151,9 +178,12 @@ pub fn whichOperator(_: *Lexer, char: u8) ?Token.TokenType {
 
 pub fn whichSyboml(_: *Lexer, char: u8) ?Token.TokenType {
     switch (char) {
-        '(', ')' => return Token.TokenType{ .SYMBOL = .roundBracket },
-        '{', '}' => return Token.TokenType{ .SYMBOL = .curlyBracket },
-        '[', ']' => return Token.TokenType{ .SYMBOL = .bracket },
+        '(' => return Token.TokenType{ .SYMBOL = .l_roundBracket },
+        ')' => return Token.TokenType{ .SYMBOL = .r_roundBracket },
+        '{' => return Token.TokenType{ .SYMBOL = .l_curlyBracket },
+        '}' => return Token.TokenType{ .SYMBOL = .r_curlyBracket },
+        '[' => return Token.TokenType{ .SYMBOL = .l_bracket },
+        ']' => return Token.TokenType{ .SYMBOL = .r_bracket },
         else => return null,
     }
 }
@@ -173,8 +203,6 @@ pub fn isSymbol(_: *Lexer, char: u8) bool {
         char == ')' or
         char == '$' or
         char == '&' or
-        char == '\'' or
-        char == '"' or
         char == '_')
     {
         return true;
@@ -206,8 +234,6 @@ pub fn isKeyword(_: *Lexer, word: []const u8) ?Token.TokenType {
     _ = keyDict.put("var", .{ .KEYWORD = .var_kw }) catch return null;
     _ = keyDict.put("class", .{ .KEYWORD = .class_kw }) catch return null;
     _ = keyDict.put("pub", .{ .KEYWORD = .pub_kw }) catch return null;
-    _ = keyDict.put("priv", .{ .KEYWORD = .priv_kw }) catch return null;
-    _ = keyDict.put("prot", .{ .KEYWORD = .prot_kw }) catch return null;
     _ = keyDict.put("creator", .{ .KEYWORD = .creator_kw }) catch return null;
     _ = keyDict.put("destroyer", .{ .KEYWORD = .destroyer_kw }) catch return null;
     _ = keyDict.put("if", .{ .KEYWORD = .if_kw }) catch return null;

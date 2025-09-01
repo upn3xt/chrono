@@ -12,6 +12,10 @@ data: union(NodeKind) {
         value: i64,
     },
 
+    StringLiteral: struct { value: []const u8 },
+
+    CharLiteral: struct { value: u8 },
+
     BinaryOperation: struct {
         left: *ASTNode,
         operator: u8,
@@ -24,4 +28,4 @@ data: union(NodeKind) {
     },
 },
 
-pub const NodeKind = enum { VariableDeclaration, VariableReference, NumberLiteral, BinaryOperation, Assignment };
+pub const NodeKind = enum { VariableDeclaration, VariableReference, NumberLiteral, StringLiteral, CharLiteral, BinaryOperation, Assignment };

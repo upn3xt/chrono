@@ -71,3 +71,93 @@ Ofc this need heavy improvement and research but that's a huge step! The moment 
 reality!
 
 I'm saving this progress for sure!!
+
+
+### Recommended Resources to Learn LLVM IR and LLVM C API
+
+ 1. **Official LLVM Documentation and Tutorials**
+- **LLVM Language Reference Manual**  
+  Comprehensive guide to LLVM IR language and instructions.  
+  https://llvm.org/docs/LangRef.html
+
+- **Kaleidoscope Tutorial (LLVM Tutorial 1)**  
+  Introductory LLVM tutorial walking step-by-step through building a language and generating IR with the LLVM C++ API. Though it uses C++ API, concepts translate well to C API.  
+  https://llvm.org/docs/tutorial/
+
+- **LLVM C API Reference**  
+  The authoritative documentation of LLVM’s C API functions you’ll use with Zig `@cImport`.  
+  https://llvm.org/doxygen/group__LLVMCCore.html
+
+ 2. **Learning LLVM IR**
+- **Understanding LLVM Intermediate Representation**  
+  This article explains LLVM IR design and concepts in an approachable way.  
+  https://mcyoung.xyz/2023/08/01/llvm-ir/
+
+- **LLVM IR Examples and Cheatsheets (GitHub, etc.)**  
+  Many repositories and blogs contain sample IR snippets; searching “LLVM IR examples” helps a lot.
+
+ 3. **Using the LLVM C API**
+- **LLVM Kaleidoscope C API Tutorial** (from the official tutorial, but adapted to C API)  
+  https://releases.llvm.org/9.0.0/docs/tutorial/BuildingAJIT1.html  
+  (Reference C API examples in LLVM sources or external repos)
+
+- **Zig Community Examples**  
+  The Zig community forums, Zig LLVM binding examples, and repositories have useful C API usages in Zig.  
+  https://github.com/ziglang/zig/wiki/Using-the-LLVM-library
+
+- **Blogs and Articles**  
+  Tutorials like “Using LLVM from C” or “Writing a compiler with LLVM C API” surface with examples and explanations.
+
+4. **Books**
+- *“LLVM Essentials”* (Packt Publishing) — A practical book focused on LLVM concepts including IR, optimization, and codegen via C++ API but very helpful.
+
+- *“Getting Started with LLVM Core Libraries”* by Bruno Cardoso Lopes and Rafael Auler — in-depth and approachable for beginners.
+
+ -> Tips to Learn Efficiently
+
+- Start by writing simple LLVM IR by hand based on tutorials to understand instruction mechanics.
+- Experiment with the LLVM `llc` and `llvm-as` tools to assemble/disassemble IR.
+- Gradually move to generating IR programmatically with the C API in small independent steps.
+- Incrementally build traversal of your AST into LLVM IR snippets for each node.
+- Use LLVM tools like `opt` and `llvm-dis` for inspecting and debugging generated IR.
+
+
+
+
+
+## What's next?
+
+Since my goal was to first get some output, some actual object that I can run. And I did.. kind of. It wasn't code "I wrote". This is where AST transversal
+comes in. This is basically just iterating over the node list and do checks for subnodes(in cases of binary operation or expression).
+
+Then at each iteration we build the code.
+
+So based on the current status:
+
+- Unfinished parser
+- Fasade Analyzer(Semantic Analyzer)
+- Fasade LLVM worker 
+
+
+### The game plan 
+
+The game plan is:
+
+- Have the parser work with:
+
+variable declaration and reference;
+function declaration and call;
+maybe some if and else;
+
+
+- Add type annotation; Proper error returns; 
+
+- Make a proper code generator
+
+- Add terminal output to see the stages 
+
+In resume:
+
+- Make the parser work with very basics. 
+- Add type annotation to the AST and evolve the token table. 
+- Evolve the analyzer and make a code gen struct to handle all the LLVM stuff.
