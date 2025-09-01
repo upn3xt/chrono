@@ -65,6 +65,16 @@ pub fn build(b: *std.Build) void {
         .root_module = exe_mod,
     });
 
+    // Zig doesn’t auto-discover C headers, so use llvm-config for that
+    const cflags = b.run(&[_][]const u8{ "llvm-config", "--cflags" });
+    exe.addCSourceFile(.{ .file = .{ .src_path = .{ .sub_path = "src/shim.c", .owner = b } }, .flags = &[_][]const u8{cflags} });
+
+    // Also link the LLVM library dirs from llvm-config
+    _ = b.run(&[_][]const u8{ "llvm-config", "--ldflags", "--libs", "--system-libs" });
+    exe.linkSystemLibrary("LLVM"); // Just in case
+
+    exe.linkLibC();
+
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
     // step when running `zig build`).

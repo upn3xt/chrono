@@ -60,3 +60,14 @@ Today I've talked with some people and they've made me realize the following:
 With that, the next language changes won't happen in this repository. Rather, in a separate repository for all of the spec of the language. Will be working on 
 the speculation repository then while also learning how to mess with LLVM. At the end the compiler will(likely) be re-writen(again XD) from scratch based on 
 the language speculation and having an idea of how to work with llvm. The goal will be to output some text like hello world in it.
+
+
+## Fuck that and lets code!
+
+Fuck the specs! I want to code! Today I have a very crappy AI generated form of output! My first every llvm object file. clang linked it and made it executable
+and returned 0!
+
+Ofc this need heavy improvement and research but that's a huge step! The moment I grasp this and know how to transverse ts, chrono programs will be become a 
+reality!
+
+I'm saving this progress for sure!!
