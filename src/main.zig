@@ -15,21 +15,21 @@ pub fn main() !void {
 
     var lexer = Lexer.init(content);
 
-    // const allocator = std.heap.page_allocator;
+    const allocator = std.heap.page_allocator;
 
     const tokens = try lexer.tokens();
 
     for (tokens) |value| {
         std.debug.print("[Token]: {s}\t[Type]: {}\n", .{ value.lexeme, value.token_type });
     }
-    //
-    // var parser = Parser.init(allocator, tokens);
-    //
-    // const nodes = try parser.ParseTokens();
-    //
-    // if (nodes != null) {
-    //     std.debug.print("Nodes has length of {}\n", .{nodes.?.len});
-    // } else {
-    //     std.debug.print("Nodes returned null.\n", .{});
-    // }
+
+    var parser = Parser.init(allocator, tokens);
+
+    const nodes = try parser.ParseTokens();
+
+    if (nodes != null) {
+        std.debug.print("Nodes has length of {}\n", .{nodes.?.len});
+    } else {
+        std.debug.print("Nodes returned null.\n", .{});
+    }
 }

@@ -18,16 +18,17 @@ pub fn ParseTokens(self: *Parser) !?[]?*ASTNode {
     var node_list = std.ArrayList(?*ASTNode).init(std.heap.page_allocator);
 
     while (true) {
-        if (self.index >= self.tokens.len) return null;
+        if (self.index >= self.tokens.len) return error.IndexOutOfBounds;
         const current_token = self.tokens[self.index];
 
         switch (current_token.token_type) {
             .KEYWORD => |key| {
                 switch (key) {
                     .const_kw, .var_kw => {
-                        const node = try self.parseVariableDeclaration();
-                        if (node == null) return error.NodeNullError;
+                        const node = try self.parseVariableDeclaration() orelse return error.VariableDeclarationParsingFailed;
+                        std.debug.print("NODE\n", .{});
                         try node_list.append(node);
+                        self.index += 1;
                     },
                     else => break,
                 }
@@ -217,7 +218,6 @@ pub fn parseVariableDeclaration(self: *Parser) !?*ASTNode {
 
             const node = try self.allocator.create(ASTNode);
             node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .name = varName, .expression = var_ref } } };
-            self.index += 1;
             return node;
         } else if (tokentype == .STRING) {
             const value_str = self.tokens[self.index].lexeme;
@@ -236,9 +236,8 @@ pub fn parseVariableDeclaration(self: *Parser) !?*ASTNode {
             if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
 
             node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .name = varName, .expression = str_node } } };
-            self.index += 1;
             return node;
-        } else if (tokentype != .CHAR) {
+        } else if (tokentype == .CHAR) {
             const value_char = self.tokens[self.index].lexeme[0];
 
             const char_node = try self.allocator.create(ASTNode);
@@ -255,7 +254,6 @@ pub fn parseVariableDeclaration(self: *Parser) !?*ASTNode {
             if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
 
             node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .name = varName, .expression = char_node } } };
-            self.index += 1;
             return node;
         } else if (tokentype == .NUMBER) {
             const num = try std.fmt.parseInt(i64, self.tokens[self.index].lexeme, 10);
@@ -272,8 +270,6 @@ pub fn parseVariableDeclaration(self: *Parser) !?*ASTNode {
 
             const node = try self.allocator.create(ASTNode);
             node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .name = varName, .expression = num_lit } } };
-
-            self.index += 1;
             return node;
         }
     }
@@ -350,7 +346,6 @@ pub fn parseVariableDeclaration(self: *Parser) !?*ASTNode {
 
                 node.* = .{ .kind = .VariableDeclaration, .data = .{ .Assignment = .{ .expression = bin_node, .variable = varRef } } };
 
-                self.index += 1;
                 return node;
             } else if (tokentype == .PUNCTUATION) {
                 if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
@@ -363,7 +358,6 @@ pub fn parseVariableDeclaration(self: *Parser) !?*ASTNode {
 
                 node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .expression = x_node, .name = varName } } };
 
-                self.index += 1;
                 return node;
             }
         }
@@ -387,7 +381,6 @@ pub fn parseVariableDeclaration(self: *Parser) !?*ASTNode {
             if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
 
             node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .name = varName, .expression = str_node } } };
-            self.index += 1;
             return node;
         }
         //string
@@ -409,12 +402,9 @@ pub fn parseVariableDeclaration(self: *Parser) !?*ASTNode {
             if (tokentype != .PUNCTUATION) return error.ExpectedPuntuaction;
             if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
 
-            self.index += 1;
             return node;
         }
         //char
-
-        self.index += 1;
     }
     return null;
 }
