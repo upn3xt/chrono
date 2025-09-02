@@ -1,3 +1,3 @@
-const name = "Mrbanana";
-const description = "I'm a fucking banana!";
-const somechar = 'A';
+const name: int = "Mrbanana";
+const description: int = "I'm a fucking banana!";
+const somechar: u8 = 'A';

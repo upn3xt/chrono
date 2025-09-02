@@ -141,38 +141,38 @@ pub fn ParseTokens(self: *Parser) !?[]?*ASTNode {
                 }
             },
             .NUMBER => {
-                const v1 = try std.fmt.parseInt(i64, self.tokens[self.index].lexeme, 10);
-
-                const lef_node = self.allocator.create(ASTNode) catch return null;
-                lef_node.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = v1 } } };
-
-                if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
-                self.index += 1;
-
-                var tokentype = self.tokens[self.index].token_type;
-
-                if (tokentype != .OPERATOR) return null;
-                if (tokentype.OPERATOR == .equal) return null;
-
-                const op_node: u8 = self.tokens[self.index].lexeme[0];
-
-                if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
-                self.index += 1;
-
-                tokentype = self.tokens[self.index].token_type;
-
-                const v2 = try std.fmt.parseInt(i64, self.tokens[self.index].lexeme, 10);
-                const ri_node = self.allocator.create(ASTNode) catch return null;
-                ri_node.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = v2 } } };
-
-                const node = self.allocator.create(ASTNode) catch return null;
-
-                std.debug.print("operation: {} {c} {}\n", .{ v1, op_node, v2 });
-                node.* = .{ .kind = .BinaryOperation, .data = .{ .BinaryOperation = .{ .left = lef_node, .operator = op_node, .right = ri_node } } };
-
-                try node_list.append(node);
-
-                self.index += 1;
+                // const v1 = try std.fmt.parseInt(i64, self.tokens[self.index].lexeme, 10);
+                //
+                // const lef_node = self.allocator.create(ASTNode) catch return null;
+                // lef_node.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = v1 } } };
+                //
+                // if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
+                // self.index += 1;
+                //
+                // var tokentype = self.tokens[self.index].token_type;
+                //
+                // if (tokentype != .OPERATOR) return null;
+                // if (tokentype.OPERATOR == .equal) return null;
+                //
+                // const op_node: u8 = self.tokens[self.index].lexeme[0];
+                //
+                // if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
+                // self.index += 1;
+                //
+                // tokentype = self.tokens[self.index].token_type;
+                //
+                // const v2 = try std.fmt.parseInt(i64, self.tokens[self.index].lexeme, 10);
+                // const ri_node = self.allocator.create(ASTNode) catch return null;
+                // ri_node.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = v2 } } };
+                //
+                // const node = self.allocator.create(ASTNode) catch return null;
+                //
+                // std.debug.print("operation: {} {c} {}\n", .{ v1, op_node, v2 });
+                // node.* = .{ .kind = .BinaryOperation, .data = .{ .BinaryOperation = .{ .left = lef_node, .operator = op_node, .right = ri_node } } };
+                //
+                // try node_list.append(node);
+                //
+                // self.index += 1;
             },
             .EOF, .UNKNOWN => break,
             else => {},

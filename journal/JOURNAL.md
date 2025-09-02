@@ -161,3 +161,10 @@ In resume:
 - Make the parser work with very basics. 
 - Add type annotation to the AST and evolve the token table. 
 - Evolve the analyzer and make a code gen struct to handle all the LLVM stuff.
+
+
+## Some progress 
+
+Chars and strings are now a thing! Also a funny thing that was happening, a simple != and == switch up, wasn't making the parser work correctly. After some 
+poking and changes to the input(the chrono file), i noticed that only chars wasn't working but strings would. Well now it works and just need to replicate 
+this behavior on the type annotation format and proceed to making binary operations and floating numbers.
