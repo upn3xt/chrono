@@ -429,6 +429,7 @@ pub fn parseFunctionDeclaration(self: *Parser) !?*ASTNode {
     tokentype = self.tokens[self.index].token_type;
 
     const start_pos = self.index;
+    std.debug.print("{s}\n", .{self.tokens[start_pos].lexeme});
 
     while (true) {
         if (self.index + 1 >= self.tokens.len) return error.OutOfBoundsError;
@@ -450,7 +451,7 @@ pub fn parseFunctionDeclaration(self: *Parser) !?*ASTNode {
 }
 
 pub fn parseBody(self: *Parser, start: usize) !?[]*ASTNode {
-    self.index = start + 1; //skip {
+    self.index = start;
     var body = std.ArrayList(*ASTNode).init(self.allocator);
 
     while (true) {
@@ -465,15 +466,10 @@ pub fn parseBody(self: *Parser, start: usize) !?[]*ASTNode {
                 self.index += 1;
             }
         }
-        // if (current_token.token_type == .IDENTIFIER) {
-        //     const node = try self.parseVariableReference() orelse return error.VariableReferenceParsingFailed;
-        //     try body.append(node);
-        // }
-        else break;
-        // else {
-        //     std.debug.print("EXPECTED KEYWORD OR INDENTIFIER GOT TOKEN: {s} TYPE: {}\n", .{ self.tokens[self.index].lexeme, self.tokens[self.index].token_type });
-        //     return error.UnexpectedTokenError;
-        // }
+        if (current_token.token_type == .IDENTIFIER) {
+            const node = try self.parseVariableReference() orelse return error.VariableReferenceParsingFailed;
+            try body.append(node);
+        } else break;
     }
 
     return body.items;
