@@ -6,7 +6,7 @@ const ASTNode = @import("chrono/ast.zig");
 const Analyzer = @import("chrono/analyzer.zig");
 
 pub fn main() !void {
-    var file = try std.fs.cwd().openFile("syntaxv1/charsnstrs.chro", .{ .mode = .read_only });
+    var file = try std.fs.cwd().openFile("syntaxv1/func.chro", .{ .mode = .read_only });
 
     var contentBuf: [1024]u8 = undefined;
     const contentBytes = try file.readAll(&contentBuf);

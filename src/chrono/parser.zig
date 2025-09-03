@@ -32,6 +32,13 @@ pub fn ParseTokens(self: *Parser) !?[]?*ASTNode {
                         try node_list.append(node);
                         self.index += 1;
                     },
+                    .function_kw => {
+                        const node = try self.parseFunctionDeclaration() orelse return error.FunctionDeclarationFailed;
+                        std.debug.print("NODE\n", .{});
+                        try node_list.append(node);
+                        self.index += 1;
+                    },
+                    .pub_kw => self.index += 1,
                     else => break,
                 }
             },
@@ -376,6 +383,14 @@ pub fn parseVariableReference(self: *Parser) !?*ASTNode {
         },
         else => return null,
     }
+
+    return null;
+}
+
+pub fn parseFunctionDeclaration(self: *Parser) !?*ASTNode {
+    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
+    self.index += 1;
+    _ = self.tokens[self.index].token_type;
 
     return null;
 }

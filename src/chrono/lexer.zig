@@ -101,13 +101,20 @@ pub fn next(self: *Lexer) Token {
         const lexeme = self.input[start_pos..self.pos];
         return Token{ .token_type = pontuation, .lexeme = lexeme };
     }
+    // if(current_char == '('){
+    //     while (true) {
+    //         const char2 = self.peek();
+    //         if (char2 == null or char2.? != ')') break;
+    //         _ = self.advance();
+    //     }
+    //
+    //     const lexeme = self.input[start_pos..self.pos];
+    //     const symbol = self.whichSyboml(current_char) orelse return Token{ .lexeme = "", .token_type = .EOF };
+    //
+    //     return Token{ .token_type = symbol, .lexeme = lexeme };
+    // }
     if (self.isSymbol(current_char)) {
-        while (true) {
-            const char2 = self.peek();
-            if (char2 == null or !(self.isSymbol(char2.?))) break;
-            _ = self.advance();
-        }
-
+        _ = self.advance();
         const lexeme = self.input[start_pos..self.pos];
         const symbol = self.whichSyboml(current_char) orelse return Token{ .lexeme = "", .token_type = .EOF };
 
