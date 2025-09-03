@@ -429,7 +429,6 @@ pub fn parseFunctionDeclaration(self: *Parser) !?*ASTNode {
     tokentype = self.tokens[self.index].token_type;
 
     const start_pos = self.index;
-    std.debug.print("{s}\n", .{self.tokens[start_pos].lexeme});
 
     while (true) {
         if (self.index + 1 >= self.tokens.len) return error.OutOfBoundsError;
@@ -441,7 +440,7 @@ pub fn parseFunctionDeclaration(self: *Parser) !?*ASTNode {
 
     const fin_pos = self.index;
 
-    const fnBody = try self.parseBody(start_pos) orelse return error.ParsingBodyFailed;
+    const fnBody = try self.parseFnBody(start_pos) orelse return error.ParsingBodyFailed;
 
     const fnNode = try self.allocator.create(ASTNode);
     fnNode.* = .{ .kind = .FunctionDeclaration, .data = .{ .FunctionDeclaration = .{ .name = fnName, .fn_type = fnType, .body = fnBody } } };
@@ -450,7 +449,7 @@ pub fn parseFunctionDeclaration(self: *Parser) !?*ASTNode {
     return fnNode;
 }
 
-pub fn parseBody(self: *Parser, start: usize) !?[]*ASTNode {
+pub fn parseFnBody(self: *Parser, start: usize) !?[]*ASTNode {
     self.index = start;
     var body = std.ArrayList(*ASTNode).init(self.allocator);
 
@@ -462,7 +461,6 @@ pub fn parseBody(self: *Parser, start: usize) !?[]*ASTNode {
             if (toktype == .const_kw) {
                 const node = try self.parseVariableDeclaration(false) orelse return error.VariableDeclarationParsingFailed;
                 try body.append(node);
-                std.debug.print("NODE\n", .{});
                 self.index += 1;
             }
         }
@@ -473,4 +471,40 @@ pub fn parseBody(self: *Parser, start: usize) !?[]*ASTNode {
     }
 
     return body.items;
+}
+
+pub fn parseFunctionCall(self: *Parser) !?*ASTNode {
+    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
+    self.index += 1;
+    var tokentype = self.tokens[self.index].token_type;
+
+    if (tokentype != .IDENTIFIER) return error.ExpectedIdentifier;
+    const fnName = self.tokens[self.index].lexeme;
+
+    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
+    self.index += 1;
+    tokentype = self.tokens[self.index].token_type;
+
+    if (tokentype != .SYMBOL) return error.ExpectedSymbol;
+    if (tokentype.SYMBOL != .l_roundBracket) return error.ExpectedSymbolLeftRoundBracket;
+
+    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
+    self.index += 1;
+    tokentype = self.tokens[self.index].token_type;
+
+    if (tokentype != .SYMBOL) return error.ExpectedSymbol;
+    if (tokentype.SYMBOL != .r_roundBracket) return error.ExpectedSymbolLeftRoundBracket;
+
+    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
+    self.index += 1;
+    tokentype = self.tokens[self.index].token_type;
+
+    if (tokentype != .PUNCTUATION) return error.ExpectedPuntuaction;
+    if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
+
+    const fn_ref = try self.allocator.create(ASTNode);
+
+    fn_ref.* = .{ .kind = .FunctionReference, .data = .{ .FunctionReference = .{ .name = fnName } } };
+
+    return fn_ref;
 }

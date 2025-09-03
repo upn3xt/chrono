@@ -5,4 +5,11 @@ pub fn main() void {
     const x: string = "Java is bad";
     var y = 10;
     y = 20;
+
+    functionBecauseYes();
+}
+
+fn functionBecauseYes() void {
+    
+    const undies = "naha"; 
 }
