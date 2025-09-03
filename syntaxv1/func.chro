@@ -2,4 +2,5 @@ pub fn main() void {
     const name = "Next";
     const a = "A";
     const b = "B";
+    const x: string = "Java is bad";
 }

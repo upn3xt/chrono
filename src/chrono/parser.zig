@@ -446,7 +446,6 @@ pub fn parseFunctionDeclaration(self: *Parser) !?*ASTNode {
     fnNode.* = .{ .kind = .FunctionDeclaration, .data = .{ .FunctionDeclaration = .{ .name = fnName, .fn_type = fnType, .body = fnBody } } };
 
     self.index = fin_pos;
-    std.debug.print("{s}\n", .{self.tokens[self.index].lexeme});
     return fnNode;
 }
 
@@ -454,23 +453,28 @@ pub fn parseBody(self: *Parser, start: usize) !?[]*ASTNode {
     self.index = start + 1; //skip {
     var body = std.ArrayList(*ASTNode).init(self.allocator);
 
-    const current_token = self.tokens[self.index];
+    while (true) {
+        const current_token = self.tokens[self.index];
 
-    if (current_token.token_type == .KEYWORD) {
-        const toktype = current_token.token_type.KEYWORD;
-        if (toktype == .const_kw) {
-            const node = try self.parseVariableDeclaration(false) orelse return error.VariableDeclarationParsingFailed;
-            try body.append(node);
+        if (current_token.token_type == .KEYWORD) {
+            const toktype = current_token.token_type.KEYWORD;
+            if (toktype == .const_kw) {
+                const node = try self.parseVariableDeclaration(false) orelse return error.VariableDeclarationParsingFailed;
+                try body.append(node);
+                std.debug.print("NODE\n", .{});
+                self.index += 1;
+            }
         }
-    }
-    if (current_token.token_type == .IDENTIFIER) {
-        const node = try self.parseVariableReference() orelse return error.VariableReferenceParsingFailed;
-        try body.append(node);
-    } else {
-        std.debug.print("EXPECTED KEYWORD OR INDENTIFIER GOT TOKEN: {s} TYPE: {}\n", .{ self.tokens[self.index].lexeme, self.tokens[self.index].token_type });
-        return error.UnexpectedTokenError;
+        // if (current_token.token_type == .IDENTIFIER) {
+        //     const node = try self.parseVariableReference() orelse return error.VariableReferenceParsingFailed;
+        //     try body.append(node);
+        // }
+        else break;
+        // else {
+        //     std.debug.print("EXPECTED KEYWORD OR INDENTIFIER GOT TOKEN: {s} TYPE: {}\n", .{ self.tokens[self.index].lexeme, self.tokens[self.index].token_type });
+        //     return error.UnexpectedTokenError;
+        // }
     }
 
-    // self.index += 1;
     return body.items;
 }
