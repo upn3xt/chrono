@@ -36,7 +36,6 @@ pub fn ParseTokens(self: *Parser) !?[]?*ASTNode {
                         const node = try self.parseFunctionDeclaration() orelse return error.FunctionDeclarationFailed;
                         std.debug.print("NODE\n", .{});
                         try node_list.append(node);
-                        self.index += 1;
                     },
                     .pub_kw => self.index += 1,
                     else => break,
@@ -61,7 +60,10 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !?*ASTNode {
 
     var tokentype = self.tokens[self.index].token_type;
 
-    if (tokentype != .IDENTIFIER) return error.ExpectedIdentifier;
+    if (tokentype != .IDENTIFIER) {
+        std.debug.print("Expected indetifier, got {s}.\n", .{self.tokens[self.index].lexeme});
+        return error.ExpectedIdentifier;
+    }
 
     const varName = self.tokens[self.index].lexeme;
 
@@ -390,7 +392,75 @@ pub fn parseVariableReference(self: *Parser) !?*ASTNode {
 pub fn parseFunctionDeclaration(self: *Parser) !?*ASTNode {
     if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
     self.index += 1;
-    _ = self.tokens[self.index].token_type;
+    var tokentype = self.tokens[self.index].token_type;
 
-    return null;
+    if (tokentype != .IDENTIFIER) return error.ExpectedIdentifier;
+
+    const fnName = self.tokens[self.index].lexeme;
+
+    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
+    self.index += 1;
+    tokentype = self.tokens[self.index].token_type;
+
+    if (tokentype != .SYMBOL) return error.ExpectedSymbol;
+    if (tokentype.SYMBOL != .l_roundBracket) return error.ExpectedSymbolLeftRoundBracket;
+
+    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
+    self.index += 1;
+    tokentype = self.tokens[self.index].token_type;
+
+    if (tokentype != .SYMBOL) return error.ExpectedSymbol;
+    if (tokentype.SYMBOL != .r_roundBracket) return error.ExpectedSymbolLeftRoundBracket;
+
+    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
+    self.index += 1;
+    tokentype = self.tokens[self.index].token_type;
+
+    if (tokentype != .IDENTIFIER) return error.ExpectedIdentifier;
+    const fnType = self.tokens[self.index].lexeme;
+
+    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
+    self.index += 1;
+    tokentype = self.tokens[self.index].token_type;
+
+    if (tokentype != .SYMBOL) return error.ExpectedSymbol;
+    if (tokentype.SYMBOL != .l_curlyBracket) return error.ExpectedSymbolLeftCurlyBracket;
+
+    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
+    self.index += 1;
+    tokentype = self.tokens[self.index].token_type;
+
+    var body = std.ArrayList(*ASTNode).init(self.allocator);
+
+    while (true) {
+        if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
+        const t2 = self.tokens[self.index].token_type;
+        if (t2 == .SYMBOL)
+            if (t2.SYMBOL == .r_curlyBracket)
+                break;
+        const node = try self.parseBody() orelse break;
+        try body.append(node);
+    }
+
+    const fnNode = try self.allocator.create(ASTNode);
+    fnNode.* = .{ .kind = .FunctionDeclaration, .data = .{ .FunctionDeclaration = .{ .name = fnName, .fn_type = fnType, .body = body.items } } };
+
+    return fnNode;
+}
+
+pub fn parseBody(self: *Parser) !?*ASTNode {
+    if (self.index >= self.tokens.len) return error.IndexOutOfBounds;
+    const current_token = self.tokens[self.index];
+
+    if (current_token.token_type == .KEYWORD) {
+        const toktype = current_token.token_type.KEYWORD;
+        if (toktype == .const_kw) {
+            const node = try self.parseVariableDeclaration(false);
+            return node;
+        }
+    }
+    if (current_token.token_type == .IDENTIFIER) {
+        const node = try self.parseVariableReference();
+        return node;
+    } else return null;
 }

@@ -25,6 +25,14 @@ data: union(NodeKind) {
         asg_type: ?[]const u8 = null,
         expression: *ASTNode,
     },
+
+    FunctionDeclaration: struct {
+        name: []const u8,
+        fn_type: []const u8,
+        body: []*ASTNode,
+    },
+
+    FunctionReference: struct { name: []const u8 },
 },
 
-pub const NodeKind = enum { VariableDeclaration, VariableReference, NumberLiteral, StringLiteral, CharLiteral, BinaryOperation, Assignment };
+pub const NodeKind = enum { VariableDeclaration, VariableReference, NumberLiteral, StringLiteral, CharLiteral, BinaryOperation, Assignment, FunctionDeclaration, FunctionReference };
