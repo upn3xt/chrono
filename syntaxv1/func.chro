@@ -1,4 +1,5 @@
 pub fn main() void {
-    
-    const greetings: string = "Hello world!";
+    const name = "Next";
+    const a = "A";
+    const b = "B";
 }

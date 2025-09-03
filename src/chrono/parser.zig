@@ -20,7 +20,6 @@ pub fn ParseTokens(self: *Parser) !?[]?*ASTNode {
     while (true) {
         if (self.index >= self.tokens.len) return error.IndexOutOfBounds;
         const current_token = self.tokens[self.index];
-
         switch (current_token.token_type) {
             .KEYWORD => |key| {
                 switch (key) {
@@ -28,14 +27,15 @@ pub fn ParseTokens(self: *Parser) !?[]?*ASTNode {
                         var ismutable = false;
                         if (key == .var_kw) ismutable = true;
                         const node = try self.parseVariableDeclaration(ismutable) orelse return error.VariableDeclarationParsingFailed;
-                        std.debug.print("NODE\n", .{});
+                        std.debug.print("VAR\n", .{});
                         try node_list.append(node);
                         self.index += 1;
                     },
                     .function_kw => {
                         const node = try self.parseFunctionDeclaration() orelse return error.FunctionDeclarationFailed;
-                        std.debug.print("NODE\n", .{});
+                        std.debug.print("FUNCTION\n", .{});
                         try node_list.append(node);
+                        self.index += 1;
                     },
                     .pub_kw => self.index += 1,
                     else => break,
@@ -179,7 +179,6 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !?*ASTNode {
             const value = try std.fmt.parseInt(i64, self.tokens[self.index].lexeme, 10);
 
             if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
-            self.index += 1;
 
             tokentype = self.tokens[self.index].token_type;
 
@@ -221,7 +220,6 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !?*ASTNode {
                 const node = try self.allocator.create(ASTNode);
 
                 node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .expression = bin_node, .name = varName, .mutable = isMutable } } };
-
                 return node;
             } else if (tokentype == .PUNCTUATION) {
                 if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
@@ -257,6 +255,7 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !?*ASTNode {
             if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
 
             node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .name = varName, .expression = str_node, .mutable = isMutable } } };
+
             return node;
         }
         //string
@@ -277,7 +276,6 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !?*ASTNode {
 
             if (tokentype != .PUNCTUATION) return error.ExpectedPuntuaction;
             if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
-
             return node;
         }
         //char
@@ -390,7 +388,7 @@ pub fn parseVariableReference(self: *Parser) !?*ASTNode {
 }
 
 pub fn parseFunctionDeclaration(self: *Parser) !?*ASTNode {
-    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
+    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
     self.index += 1;
     var tokentype = self.tokens[self.index].token_type;
 
@@ -398,69 +396,81 @@ pub fn parseFunctionDeclaration(self: *Parser) !?*ASTNode {
 
     const fnName = self.tokens[self.index].lexeme;
 
-    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
+    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
     self.index += 1;
     tokentype = self.tokens[self.index].token_type;
 
     if (tokentype != .SYMBOL) return error.ExpectedSymbol;
     if (tokentype.SYMBOL != .l_roundBracket) return error.ExpectedSymbolLeftRoundBracket;
 
-    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
+    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
     self.index += 1;
     tokentype = self.tokens[self.index].token_type;
 
     if (tokentype != .SYMBOL) return error.ExpectedSymbol;
     if (tokentype.SYMBOL != .r_roundBracket) return error.ExpectedSymbolLeftRoundBracket;
 
-    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
+    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
     self.index += 1;
     tokentype = self.tokens[self.index].token_type;
 
     if (tokentype != .IDENTIFIER) return error.ExpectedIdentifier;
     const fnType = self.tokens[self.index].lexeme;
 
-    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
+    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
     self.index += 1;
     tokentype = self.tokens[self.index].token_type;
 
     if (tokentype != .SYMBOL) return error.ExpectedSymbol;
     if (tokentype.SYMBOL != .l_curlyBracket) return error.ExpectedSymbolLeftCurlyBracket;
 
-    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
+    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
     self.index += 1;
     tokentype = self.tokens[self.index].token_type;
 
-    var body = std.ArrayList(*ASTNode).init(self.allocator);
+    const start_pos = self.index;
 
     while (true) {
-        if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
-        const t2 = self.tokens[self.index].token_type;
-        if (t2 == .SYMBOL)
-            if (t2.SYMBOL == .r_curlyBracket)
-                break;
-        const node = try self.parseBody() orelse break;
-        try body.append(node);
+        if (self.index + 1 >= self.tokens.len) return error.OutOfBoundsError;
+        self.index += 1;
+        tokentype = self.tokens[self.index].token_type;
+        if (tokentype == .SYMBOL)
+            if (tokentype.SYMBOL == .r_curlyBracket) break;
     }
 
-    const fnNode = try self.allocator.create(ASTNode);
-    fnNode.* = .{ .kind = .FunctionDeclaration, .data = .{ .FunctionDeclaration = .{ .name = fnName, .fn_type = fnType, .body = body.items } } };
+    const fin_pos = self.index;
 
+    const fnBody = try self.parseBody(start_pos) orelse return error.ParsingBodyFailed;
+
+    const fnNode = try self.allocator.create(ASTNode);
+    fnNode.* = .{ .kind = .FunctionDeclaration, .data = .{ .FunctionDeclaration = .{ .name = fnName, .fn_type = fnType, .body = fnBody } } };
+
+    self.index = fin_pos;
+    std.debug.print("{s}\n", .{self.tokens[self.index].lexeme});
     return fnNode;
 }
 
-pub fn parseBody(self: *Parser) !?*ASTNode {
-    if (self.index >= self.tokens.len) return error.IndexOutOfBounds;
+pub fn parseBody(self: *Parser, start: usize) !?[]*ASTNode {
+    self.index = start + 1; //skip {
+    var body = std.ArrayList(*ASTNode).init(self.allocator);
+
     const current_token = self.tokens[self.index];
 
     if (current_token.token_type == .KEYWORD) {
         const toktype = current_token.token_type.KEYWORD;
         if (toktype == .const_kw) {
-            const node = try self.parseVariableDeclaration(false);
-            return node;
+            const node = try self.parseVariableDeclaration(false) orelse return error.VariableDeclarationParsingFailed;
+            try body.append(node);
         }
     }
     if (current_token.token_type == .IDENTIFIER) {
-        const node = try self.parseVariableReference();
-        return node;
-    } else return null;
+        const node = try self.parseVariableReference() orelse return error.VariableReferenceParsingFailed;
+        try body.append(node);
+    } else {
+        std.debug.print("EXPECTED KEYWORD OR INDENTIFIER GOT TOKEN: {s} TYPE: {}\n", .{ self.tokens[self.index].lexeme, self.tokens[self.index].token_type });
+        return error.UnexpectedTokenError;
+    }
+
+    // self.index += 1;
+    return body.items;
 }
