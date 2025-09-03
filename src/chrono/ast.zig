@@ -4,9 +4,7 @@ kind: NodeKind,
 data: union(NodeKind) {
     VariableDeclaration: struct { name: []const u8, var_type: ?[]const u8 = null, expression: ?*ASTNode, mutable: bool = false },
 
-    VariableReference: struct {
-        name: []const u8,
-    },
+    VariableReference: struct { name: []const u8, mutable: bool = false },
 
     NumberLiteral: struct {
         value: i64,
