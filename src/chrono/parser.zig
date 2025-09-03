@@ -25,7 +25,9 @@ pub fn ParseTokens(self: *Parser) !?[]?*ASTNode {
             .KEYWORD => |key| {
                 switch (key) {
                     .const_kw, .var_kw => {
-                        const node = try self.parseVariableDeclaration() orelse return error.VariableDeclarationParsingFailed;
+                        var ismutable = false;
+                        if (key == .var_kw) ismutable = true;
+                        const node = try self.parseVariableDeclaration(ismutable) orelse return error.VariableDeclarationParsingFailed;
                         std.debug.print("NODE\n", .{});
                         try node_list.append(node);
                         self.index += 1;
@@ -181,7 +183,7 @@ pub fn ParseTokens(self: *Parser) !?[]?*ASTNode {
     return node_list.items;
 }
 
-pub fn parseVariableDeclaration(self: *Parser) !?*ASTNode {
+pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !?*ASTNode {
     if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
     self.index += 1;
 
@@ -217,7 +219,7 @@ pub fn parseVariableDeclaration(self: *Parser) !?*ASTNode {
             if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
 
             const node = try self.allocator.create(ASTNode);
-            node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .name = varName, .expression = var_ref } } };
+            node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .name = varName, .expression = var_ref, .mutable = isMutable } } };
             return node;
         } else if (tokentype == .STRING) {
             const value_str = self.tokens[self.index].lexeme;
@@ -235,7 +237,7 @@ pub fn parseVariableDeclaration(self: *Parser) !?*ASTNode {
             if (tokentype != .PUNCTUATION) return error.ExpectedPuntuaction;
             if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
 
-            node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .name = varName, .expression = str_node } } };
+            node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .name = varName, .expression = str_node, .mutable = isMutable } } };
             return node;
         } else if (tokentype == .CHAR) {
             const value_char = self.tokens[self.index].lexeme[0];
@@ -253,7 +255,7 @@ pub fn parseVariableDeclaration(self: *Parser) !?*ASTNode {
             if (tokentype != .PUNCTUATION) return error.ExpectedPuntuaction;
             if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
 
-            node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .name = varName, .expression = char_node } } };
+            node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .name = varName, .expression = char_node, .mutable = isMutable } } };
             return node;
         } else if (tokentype == .NUMBER) {
             const num = try std.fmt.parseInt(i64, self.tokens[self.index].lexeme, 10);
@@ -269,7 +271,7 @@ pub fn parseVariableDeclaration(self: *Parser) !?*ASTNode {
             num_lit.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = num } } };
 
             const node = try self.allocator.create(ASTNode);
-            node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .name = varName, .expression = num_lit } } };
+            node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .name = varName, .expression = num_lit, .mutable = isMutable } } };
             return node;
         }
     }
@@ -344,7 +346,7 @@ pub fn parseVariableDeclaration(self: *Parser) !?*ASTNode {
 
                 const node = try self.allocator.create(ASTNode);
 
-                node.* = .{ .kind = .VariableDeclaration, .data = .{ .Assignment = .{ .expression = bin_node, .variable = varRef } } };
+                node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .expression = bin_node, .name = varName, .mutable = isMutable } } };
 
                 return node;
             } else if (tokentype == .PUNCTUATION) {
@@ -356,7 +358,7 @@ pub fn parseVariableDeclaration(self: *Parser) !?*ASTNode {
 
                 const node = try self.allocator.create(ASTNode);
 
-                node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .expression = x_node, .name = varName } } };
+                node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .expression = x_node, .name = varName, .mutable = isMutable } } };
 
                 return node;
             }
@@ -380,7 +382,7 @@ pub fn parseVariableDeclaration(self: *Parser) !?*ASTNode {
             if (tokentype != .PUNCTUATION) return error.ExpectedPuntuaction;
             if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
 
-            node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .name = varName, .expression = str_node } } };
+            node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .name = varName, .expression = str_node, .mutable = isMutable } } };
             return node;
         }
         //string
@@ -393,7 +395,7 @@ pub fn parseVariableDeclaration(self: *Parser) !?*ASTNode {
             char_node.* = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = valueChar } } };
 
             const node = try self.allocator.create(ASTNode);
-            node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .name = varName, .expression = char_node } } };
+            node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .name = varName, .expression = char_node, .mutable = isMutable } } };
 
             if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
             self.index += 1;

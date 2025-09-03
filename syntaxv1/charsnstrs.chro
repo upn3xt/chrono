@@ -1,3 +1,5 @@
-const name: int = "Mrbanana";
-const description: int = "I'm a fucking banana!";
+const name: string = "Mrbanana";
+const description: string = "I'm a fucking banana!";
 const somechar: u8 = 'A';
+var a: i32 = 10;
+a = 20;
