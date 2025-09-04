@@ -1,5 +1,7 @@
 const std = @import("std");
-const ASTNode = @import("ast.zig");
+const Import = @import("../imports.zig");
+
+const ASTNode = Import.ASTNode;
 
 const Analyzer = @This();
 

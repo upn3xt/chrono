@@ -1,7 +1,8 @@
 const std = @import("std");
 const expect = std.testing.expect;
-const Lexer = @import("../src/chrono/lexer.zig");
-const Parser = @import("../src/chrono/parser.zig");
+const Import = @import("chrono/imports.zig");
+const Lexer = Import.Lexer;
+const Parser = Import.Parser;
 
 test "token list" {
     var file = try std.fs.cwd().openFile("syntaxv1/basics.chro", .{ .mode = .read_only });

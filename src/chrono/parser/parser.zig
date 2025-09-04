@@ -1,6 +1,10 @@
-const Token = @import("token.zig");
-const ASTNode = @import("ast.zig");
 const std = @import("std");
+
+const Import = @import("../imports.zig");
+const ParseError = @import("errors.zig");
+
+const Token = Import.Token;
+const ASTNode = Import.ASTNode;
 
 const Parser = @This();
 
@@ -380,6 +384,29 @@ pub fn parseVariableReference(self: *Parser) !?*ASTNode {
             };
 
             return ref_node;
+        },
+        .SYMBOL => {
+            var toktype = self.tokens[self.index].token_type;
+            if (toktype != .SYMBOL) return error.ExpectedSymbol;
+            if (toktype.SYMBOL != .l_roundBracket) return error.ExpectedSymbolLeftRoundBracket;
+
+            if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
+            self.index += 1;
+            toktype = self.tokens[self.index].token_type;
+
+            if (toktype != .SYMBOL) return error.ExpectedSymbol;
+            if (toktype.SYMBOL != .r_roundBracket) return error.ExpectedSymbolRightRoundBracket;
+
+            if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
+            self.index += 1;
+            toktype = self.tokens[self.index].token_type;
+
+            if (toktype != .PUNCTUATION) return error.ExpectedPuntuaction;
+            if (toktype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
+
+            const fn_ref = try self.allocator.create(ASTNode);
+            fn_ref.* = .{ .kind = .FunctionReference, .data = .{ .FunctionReference = .{ .name = varName } } };
+            return fn_ref;
         },
         else => return null,
     }

@@ -170,6 +170,16 @@ poking and changes to the input(the chrono file), i noticed that only chars wasn
 this behavior on the type annotation format and proceed to making binary operations and floating numbers.
 
 
-## Headaches and rewrite 
+## Functions and refactoring 
 
-Realized that for bodies
+Functions declaration and reference/calls are now a thing(without parameters). Also, realized that using switches are lowkey a headache and that using 
+if/else allows me to have more control of the main loop. So now to do there's:
+
+- Final touch on functions
+- Maybe add parameters 
+- Refactor main loop
+- Modify assignment and reference 
+- Add binary operation support
+
+The development is actual going nice, for a moment thought of re-writing the parser just because of the function body. But then figured just storing the start 
+and end of the function body and then make the parseFnBody adjust the position of the index to parse it and then return to the end position when the body parsing was done.

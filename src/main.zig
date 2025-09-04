@@ -1,9 +1,11 @@
 const std = @import("std");
-const Token = @import("chrono/token.zig");
-const Lexer = @import("chrono/lexer.zig");
-const Parser = @import("chrono/parser.zig");
-const ASTNode = @import("chrono/ast.zig");
-const Analyzer = @import("chrono/analyzer.zig");
+const Import = @import("chrono/imports.zig");
+
+const Token = Import.Token;
+const Lexer = Import.Lexer;
+const Parser = Import.Parser;
+const ASTNode = Import.ASTNode;
+const Analyzer = Import.Analyzer;
 
 pub fn main() !void {
     var file = try std.fs.cwd().openFile("syntaxv1/func.chro", .{ .mode = .read_only });
