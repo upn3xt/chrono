@@ -6,8 +6,6 @@ pub fn main() void {
     const a = "A";
     const b = "B";
     const x: string = "Java is bad";
-    var y = 10;
-    y = 20;
 
     functionBecauseYes();
 }
