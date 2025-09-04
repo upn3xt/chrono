@@ -481,20 +481,31 @@ pub fn parseFnBody(self: *Parser, start: usize) !?[]*ASTNode {
     var body = std.ArrayList(*ASTNode).init(self.allocator);
 
     while (true) {
-        const current_token = self.tokens[self.index];
+        const current_token = self.tokens[self.index].token_type;
 
-        if (current_token.token_type == .KEYWORD) {
-            const toktype = current_token.token_type.KEYWORD;
-            if (toktype == .const_kw) {
+        if (current_token == .KEYWORD) {
+            if (current_token.KEYWORD == .const_kw) {
                 const node = try self.parseVariableDeclaration(false) orelse return error.VariableDeclarationParsingFailed;
+                std.debug.print("body var\n", .{});
+                try body.append(node);
+                self.index += 1;
+            }
+            if (current_token.KEYWORD == .var_kw) {
+                const node = try self.parseVariableDeclaration(true) orelse return error.VariableDeclarationParsingFailed;
+                std.debug.print("body var mut\n", .{});
                 try body.append(node);
                 self.index += 1;
             }
         }
-        if (current_token.token_type == .IDENTIFIER) {
-            const node = try self.parseVariableReference() orelse return error.VariableReferenceParsingFailed;
+        if (current_token == .IDENTIFIER) {
+            const node = try self.parseAssignmentOrFnCall() orelse return error.AssignmentParsingFailed;
+            std.debug.print("VAR OR FN\n", .{});
             try body.append(node);
-        } else break;
+            self.index += 1;
+        } else {
+            std.debug.print("UNEXPECTED TOKEN: {s}\t TYPE: {}\n", .{ self.tokens[self.index].lexeme, self.tokens[self.index].token_type });
+            return error.UnexpectedToken;
+        }
     }
 
     return body.items;
@@ -534,4 +545,92 @@ pub fn parseFunctionCall(self: *Parser) !?*ASTNode {
     fn_ref.* = .{ .kind = .FunctionReference, .data = .{ .FunctionReference = .{ .name = fnName } } };
 
     return fn_ref;
+}
+
+pub fn parseAssignmentOrFnCall(self: *Parser) !?*ASTNode {
+    const name = self.tokens[self.index].lexeme;
+
+    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
+    self.index += 1;
+    var tokentype = self.tokens[self.index].token_type;
+
+    if (tokentype == .OPERATOR) {
+        if (tokentype.OPERATOR == .equal) {
+            if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
+            self.index += 1;
+            tokentype = self.tokens[self.index].token_type;
+            if (tokentype == .STRING) {
+                const value = self.tokens[self.index].lexeme;
+
+                const var_node = try self.allocator.create(ASTNode);
+                var_node.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = name } } };
+
+                const str_node = try self.allocator.create(ASTNode);
+                str_node.* = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{ .value = value } } };
+
+                const node = try self.allocator.create(ASTNode);
+                node.* = .{ .kind = .Assignment, .data = .{ .Assignment = .{ .expression = str_node, .variable = var_node, .asg_type = "string" } } };
+
+                if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
+                self.index += 1;
+                tokentype = self.tokens[self.index].token_type;
+
+                if (tokentype != .PUNCTUATION) return error.ExpectedPuntuaction;
+                if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
+
+                return node;
+            }
+            if (tokentype == .CHAR) {
+                const value = self.tokens[self.index].lexeme[0];
+
+                const var_node = try self.allocator.create(ASTNode);
+                var_node.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = name } } };
+
+                const char_node = try self.allocator.create(ASTNode);
+                char_node.* = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = value } } };
+
+                const node = try self.allocator.create(ASTNode);
+                node.* = .{ .kind = .Assignment, .data = .{ .Assignment = .{ .expression = char_node, .variable = var_node, .asg_type = "char" } } };
+
+                if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
+                self.index += 1;
+                tokentype = self.tokens[self.index].token_type;
+
+                if (tokentype != .PUNCTUATION) return error.ExpectedPuntuaction;
+                if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
+
+                return node;
+            }
+            if (tokentype == .NUMBER) {
+                const node = try self.parseNumberOrOperation() orelse return error.ParsingNumberOrOperationFailed;
+                return node;
+            } else return error.UnexpectedToken;
+        }
+    }
+    if (tokentype == .SYMBOL) {
+        if (tokentype.SYMBOL != .l_roundBracket) return error.ExpectedSymbolLeftRoundBracket;
+        if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
+        self.index += 1;
+        tokentype = self.tokens[self.index].token_type;
+
+        if (tokentype != .SYMBOL) return error.ExpectedSymbol;
+        if (tokentype.SYMBOL != .r_roundBracket) return error.ExpectedSymbolRightRoundBracket;
+        if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
+        self.index += 1;
+        tokentype = self.tokens[self.index].token_type;
+
+        if (tokentype != .PUNCTUATION) return error.ExpectedPuntuaction;
+        if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
+
+        const fnCall = try self.allocator.create(ASTNode);
+
+        fnCall.* = .{ .kind = .FunctionReference, .data = .{ .FunctionReference = .{ .name = name } } };
+        return fnCall;
+    } else return error.UnexpectedToken;
+
+    return null;
+}
+
+pub fn parseNumberOrOperation(_: *Parser) !?*ASTNode {
+    return null;
 }

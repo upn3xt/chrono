@@ -1,3 +1,6 @@
+
+const miux = "banana";
+
 pub fn main() void {
     const name = "Next";
     const a = "A";
@@ -10,6 +13,6 @@ pub fn main() void {
 }
 
 fn functionBecauseYes() void {
-    
     const undies = "naha"; 
+    const why = 'Y';
 }

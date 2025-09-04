@@ -183,3 +183,7 @@ if/else allows me to have more control of the main loop. So now to do there's:
 
 The development is actual going nice, for a moment thought of re-writing the parser just because of the function body. But then figured just storing the start 
 and end of the function body and then make the parseFnBody adjust the position of the index to parse it and then return to the end position when the body parsing was done.
+
+## When your logic is totally correct but your program still fails to retrieve the corrent result \ ò * ó / ¹¹
+
+Posted up like this <_| õ - õ |_>  --> (Tf am I supposed to do if the logic is right but the result aint right)
