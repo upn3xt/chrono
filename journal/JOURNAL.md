@@ -187,3 +187,7 @@ and end of the function body and then make the parseFnBody adjust the position o
 ## When your logic is totally correct but your program still fails to retrieve the corrent result \ ò * ó / ¹¹
 
 Posted up like this <_| õ - õ |_>  --> (Tf am I supposed to do if the logic is right but the result aint right)
+
+## Switches are the solution, really
+
+Once they caused me problems, but now they worked as the solution

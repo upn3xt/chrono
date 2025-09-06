@@ -18,8 +18,8 @@ pub fn init(allocator: std.mem.Allocator, tokens: []Token) Parser {
 
 /// Parses the tokens list
 /// Returns an array of possibly null ASTNodes
-pub fn ParseTokens(self: *Parser) !?[]?*ASTNode {
-    var node_list = std.ArrayList(?*ASTNode).init(std.heap.page_allocator);
+pub fn ParseTokens(self: *Parser) !?[]*ASTNode {
+    var node_list = std.ArrayList(*ASTNode).init(std.heap.page_allocator);
 
     while (true) {
         if (self.index >= self.tokens.len) return error.IndexOutOfBounds;
@@ -359,7 +359,6 @@ pub fn parseFunctionDeclaration(self: *Parser) !?*ASTNode {
 
 pub fn parseFnBody(self: *Parser, start: usize) !?[]*ASTNode {
     self.index = start;
-    // std.debug.print("start pos: {}\n", .{self.index});
     var body = std.ArrayList(*ASTNode).init(self.allocator);
 
     while (true) {
@@ -370,13 +369,11 @@ pub fn parseFnBody(self: *Parser, start: usize) !?[]*ASTNode {
                 if (key == .const_kw) {
                     const node = try self.parseVariableDeclaration(false) orelse return error.VariableDeclarationParsingFailed;
                     std.debug.print("VAR\n", .{});
-                    // std.debug.print("after parsing pos: {}\n", .{self.index});
                     try body.append(node);
                 }
                 if (key == .var_kw) {
                     const node = try self.parseVariableDeclaration(true) orelse return error.VariableDeclarationParsingFailed;
                     std.debug.print("VAR\n", .{});
-                    // std.debug.print("after parsing pos: {}\n", .{self.index});
                     try body.append(node);
                 }
             },
@@ -388,24 +385,6 @@ pub fn parseFnBody(self: *Parser, start: usize) !?[]*ASTNode {
             },
             else => break,
         }
-        // if (current_token == .KEYWORD) {
-        //     if (current_token.KEYWORD == .const_kw) {
-        //         const node = try self.parseVariableDeclaration(false) orelse return error.VariableDeclarationParsingFailed;
-        //         std.debug.print("after parsing pos: {}\n", .{self.index});
-        //         try body.append(node);
-        //     }
-        //     if (current_token.KEYWORD == .var_kw) {
-        //         const node = try self.parseVariableDeclaration(true) orelse return error.VariableDeclarationParsingFailed;
-        //         std.debug.print("after parsing pos: {}\n", .{self.index});
-        //         try body.append(node);
-        //     }
-        // }
-        // if (current_token == .IDENTIFIER) {
-        //     const node = try self.parseAssignmentOrFnCall() orelse return error.AssignmentParsingFailed;
-        //     std.debug.print("VAR OR FN\n", .{});
-        //     try body.append(node);
-        //     self.index += 1;
-        // } else break;
     }
 
     return body.items;
