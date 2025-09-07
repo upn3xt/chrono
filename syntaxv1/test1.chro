@@ -5,3 +5,45 @@ fn main() !void {
 
     IO.print($"{hello_world}\n");
 }
+
+// No functions, just fields
+const ExampleStruct = struct{
+    x: i32,
+    y: i32,
+};
+
+const ExampleClass = class{
+    priv_field: string,
+    pub somefield: string,
+
+    ExampleClass(somevalue:string){
+       this.priv_field = somevalue;
+    }
+
+    destroyer aCustomWayToDestroyAClass(){
+        // do something...
+    }
+};
+
+const ExampleAtribute = atribute{
+    // code ...
+};
+
+const ExampleClassUsingAtributes = class{
+    priv_field: string,
+    pub somefield: string,
+
+    ExampleClass(somevalue:string){
+       this.priv_field = somevalue;
+    }
+
+    destroyer aCustomWayToDestroyAClass(){
+        // do something...
+    }
+
+    // Implementing atributes in a class using special functions, looks cleaner
+    @impl({
+        [ExampleAtribute]
+    })
+};
+
