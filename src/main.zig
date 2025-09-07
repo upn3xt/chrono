@@ -9,7 +9,7 @@ const Analyzer = Import.Analyzer;
 const Printer = Import.Printer;
 
 pub fn main() !void {
-    var file = try std.fs.cwd().openFile("syntaxv1/basics.chro", .{ .mode = .read_only });
+    var file = try std.fs.cwd().openFile("syntaxv1/func.chro", .{ .mode = .read_only });
 
     var contentBuf: [1024]u8 = undefined;
     const contentBytes = try file.readAll(&contentBuf);
@@ -25,16 +25,15 @@ pub fn main() !void {
     for (tokens) |value| {
         std.debug.print("[Token]: {s}\t[Type]: {}\n", .{ value.lexeme, value.token_type });
     }
-
+    //
     var parser = Parser.init(allocator, tokens);
-
     const nodes = try parser.ParseTokens();
+    //
+    // Printer.printAST(nodes);
 
-    Printer.printAST(nodes);
-
-    // if (nodes != null) {
-    //     std.debug.print("Nodes has length of {}\n", .{nodes.?.len});
-    // } else {
-    //     std.debug.print("Nodes returned null.\n", .{});
-    // }
+    if (nodes != null) {
+        std.debug.print("Nodes has length of {}\n", .{nodes.?.len});
+    } else {
+        std.debug.print("Nodes returned null.\n", .{});
+    }
 }

@@ -315,8 +315,40 @@ pub fn parseFunctionDeclaration(self: *Parser) !?*ASTNode {
     self.index += 1;
     tokentype = self.tokens[self.index].token_type;
 
-    if (tokentype != .SYMBOL) return error.ExpectedSymbol;
-    if (tokentype.SYMBOL != .r_roundBracket) return error.ExpectedSymbolLeftRoundBracket;
+    var parameters = std.ArrayList(*ASTNode).init(self.allocator);
+    while (true) {
+        if (tokentype == .SYMBOL)
+            if (tokentype.SYMBOL == .r_roundBracket) break;
+
+        if (tokentype != .IDENTIFIER) return error.ExpectedIdentifier;
+        const name = self.tokens[self.index].lexeme;
+
+        self.index += 1;
+        tokentype = self.tokens[self.index].token_type;
+
+        if (tokentype != .PUNCTUATION) return error.ExpectedPuntuaction;
+        if (tokentype.PUNCTUATION != .colon) return error.ExpectedPuntuactionColon;
+
+        self.index += 1;
+        tokentype = self.tokens[self.index].token_type;
+
+        if (tokentype != .IDENTIFIER) return error.ExpectedIdentifier;
+        const par_type = self.tokens[self.index].lexeme;
+
+        const parameter = try self.allocator.create(ASTNode);
+        parameter.* = .{ .kind = .Parameter, .data = .{ .Parameter = .{ .name = name, .par_type = par_type } } };
+
+        try parameters.append(parameter);
+        std.debug.print("BANANA!\n", .{});
+
+        self.index += 1;
+        tokentype = self.tokens[self.index].token_type;
+
+        if (tokentype == .PUNCTUATION) {
+            if (tokentype.PUNCTUATION == .comma)
+                self.index += 1;
+        }
+    }
 
     if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
     self.index += 1;
@@ -351,7 +383,7 @@ pub fn parseFunctionDeclaration(self: *Parser) !?*ASTNode {
     const fnBody = try self.parseFnBody(start_pos) orelse return error.ParsingBodyFailed;
 
     const fnNode = try self.allocator.create(ASTNode);
-    fnNode.* = .{ .kind = .FunctionDeclaration, .data = .{ .FunctionDeclaration = .{ .name = fnName, .fn_type = fnType, .body = fnBody } } };
+    fnNode.* = .{ .kind = .FunctionDeclaration, .data = .{ .FunctionDeclaration = .{ .name = fnName, .fn_type = fnType, .body = fnBody, .parameters = parameters.items } } };
 
     self.index = fin_pos;
     return fnNode;

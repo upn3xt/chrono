@@ -10,7 +10,7 @@ pub fn main() void {
     functionBecauseYes();
 }
 
-fn functionBecauseYes() void {
+fn functionBecauseYes(a: int, b: string) void {
     const undies = "naha"; 
     const why = 'Y';
 }

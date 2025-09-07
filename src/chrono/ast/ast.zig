@@ -30,9 +30,15 @@ data: union(NodeKind) {
         name: []const u8,
         fn_type: []const u8,
         body: []*ASTNode,
+        parameters: ?[]*ASTNode = null,
     },
 
-    FunctionReference: struct { name: []const u8 },
+    FunctionReference: struct { name: []const u8, arguments: ?[]*ASTNode = null },
+
+    Parameter: struct {
+        name: []const u8,
+        par_type: []const u8,
+    },
 },
 
-pub const NodeKind = enum { VariableDeclaration, VariableReference, NumberLiteral, StringLiteral, CharLiteral, BinaryOperation, Assignment, FunctionDeclaration, FunctionReference };
+pub const NodeKind = enum { VariableDeclaration, VariableReference, NumberLiteral, StringLiteral, CharLiteral, BinaryOperation, Assignment, FunctionDeclaration, FunctionReference, Parameter };
