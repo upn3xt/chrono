@@ -345,8 +345,10 @@ pub fn parseFunctionDeclaration(self: *Parser) !?*ASTNode {
         tokentype = self.tokens[self.index].token_type;
 
         if (tokentype == .PUNCTUATION) {
-            if (tokentype.PUNCTUATION == .comma)
+            if (tokentype.PUNCTUATION == .comma) {
                 self.index += 1;
+                tokentype = self.tokens[self.index].token_type;
+            }
         }
     }
 

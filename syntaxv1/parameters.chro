@@ -1,0 +1,4 @@
+fn someFunction(x: int, y: int) void {
+    const x1 = x;
+    const y1 = y;
+}

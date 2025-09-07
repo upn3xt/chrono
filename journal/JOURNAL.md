@@ -191,3 +191,8 @@ Posted up like this <_| õ - õ |_>  --> (Tf am I supposed to do if the logic is
 ## Switches are the solution, really
 
 Once they caused me problems, but now they worked as the solution
+
+
+## Im staring to hate this 
+
+Again, my logic IT IS right. Even tried switch the methods, and it still doesn't work! Parameters are stupid for not working with the right logic!
