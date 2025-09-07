@@ -196,3 +196,6 @@ Once they caused me problems, but now they worked as the solution
 ## Im staring to hate this 
 
 Again, my logic IT IS right. Even tried switch the methods, and it still doesn't work! Parameters are stupid for not working with the right logic!
+
+Fixed, it was missing updating the token type, lol. How did I find that? by printing and not returning an error, b was a comma, lol. I just was updating the 
+position but also missing the tokentype update.
