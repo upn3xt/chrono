@@ -1,15 +1,17 @@
-
+// comment xsaansjdkjasndksnadkaskndkndkajsdk
 const miux = "banana";
 
 pub fn main() void {
     const name = "Next";
     const a = "A";
     const b = "B";
-    const x: string = "Java is bad";
+    const x: string = "Java is bad"; // this is based
 
     functionBecauseYes();
 }
 
+// do comments work now?
+// yes they work lalalalalala
 fn functionBecauseYes(a: int, b: string) void {
     const undies = "naha"; 
     const why = 'Y';

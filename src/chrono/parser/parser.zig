@@ -51,6 +51,7 @@ pub fn ParseTokens(self: *Parser) !?[]*ASTNode {
                 self.index += 1;
             },
             .EOF, .UNKNOWN => break,
+            .COMMENT => self.index += 1,
             else => {},
         }
     }

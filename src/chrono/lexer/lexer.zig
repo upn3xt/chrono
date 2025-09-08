@@ -77,7 +77,17 @@ pub fn next(self: *Lexer) Token {
         const lexeme = self.input[start_pos..self.pos];
         return Token{ .token_type = .{ .NUMBER = .int }, .lexeme = lexeme };
     }
-
+    if (current_char == '/') {
+        _ = self.advance();
+        if (current_char != '/') return Token{ .token_type = .UNKNOWN, .lexeme = "" };
+        while (true) {
+            const char2 = self.peek();
+            if (char2 == null or char2.? == '\n') break;
+            _ = self.advance();
+        }
+        const lexeme = self.input[start_pos..self.pos];
+        return Token{ .lexeme = lexeme, .token_type = .COMMENT };
+    }
     if (self.isOperator(current_char)) {
         while (true) {
             const char2 = self.peek();
@@ -103,18 +113,6 @@ pub fn next(self: *Lexer) Token {
         const lexeme = self.input[start_pos..self.pos];
         return Token{ .token_type = pontuation, .lexeme = lexeme };
     }
-    // if(current_char == '('){
-    //     while (true) {
-    //         const char2 = self.peek();
-    //         if (char2 == null or char2.? != ')') break;
-    //         _ = self.advance();
-    //     }
-    //
-    //     const lexeme = self.input[start_pos..self.pos];
-    //     const symbol = self.whichSyboml(current_char) orelse return Token{ .lexeme = "", .token_type = .EOF };
-    //
-    //     return Token{ .token_type = symbol, .lexeme = lexeme };
-    // }
     if (self.isSymbol(current_char)) {
         _ = self.advance();
         const lexeme = self.input[start_pos..self.pos];
@@ -149,6 +147,7 @@ pub fn next(self: *Lexer) Token {
         const lexeme = std.mem.trim(u8, self.input[start_pos..self.pos], "\'");
         return Token{ .lexeme = lexeme, .token_type = .CHAR };
     }
+
     _ = self.advance();
     const lexeme = self.input[start_pos..self.pos];
     return Token{ .lexeme = lexeme, .token_type = .UNKNOWN };

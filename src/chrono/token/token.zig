@@ -15,6 +15,7 @@ pub const TokenType = union(enum) {
     KEYWORD: TKeyword,
     UNKNOWN,
     EOF,
+    COMMENT,
 };
 
 pub const TNumber = enum { int, float, double };
