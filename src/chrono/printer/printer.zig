@@ -8,7 +8,7 @@ const Printer = @This();
 
 pub fn printTokens(tokens: []Token) void {
     for (tokens) |token| {
-        std.debug.print("[Token]:{s}\t [Type]:{}\n", .{ token.lexeme, token.token_type });
+        std.debug.print("[Token]: {s}\t [Type]: {}\n", .{ token.lexeme, token.token_type });
     }
 }
 

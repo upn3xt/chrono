@@ -22,13 +22,11 @@ pub fn main() !void {
 
     const tokens = try lexer.tokens();
 
-    for (tokens) |value| {
-        std.debug.print("[Token]: {s}\t[Type]: {}\n", .{ value.lexeme, value.token_type });
-    }
-    //
+    // Printer.printTokens(tokens);
+
     var parser = Parser.init(allocator, tokens);
     const nodes = try parser.ParseTokens();
-    //
+
     // Printer.printAST(nodes);
 
     if (nodes != null) {

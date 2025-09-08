@@ -411,6 +411,7 @@ pub fn parseFnBody(self: *Parser, start: usize) !?[]*ASTNode {
                     std.debug.print("VAR\n", .{});
                     try body.append(node);
                 }
+                self.index += 1;
             },
             .IDENTIFIER => {
                 const node = try self.parseAssignmentOrFnCall() orelse return error.AssignmentParsingFailed;
@@ -490,8 +491,60 @@ pub fn parseAssignmentOrFnCall(self: *Parser) !?*ASTNode {
         self.index += 1;
         tokentype = self.tokens[self.index].token_type;
 
-        if (tokentype != .SYMBOL) return error.ExpectedSymbol;
-        if (tokentype.SYMBOL != .r_roundBracket) return error.ExpectedSymbolRightRoundBracket;
+        var arguments = std.ArrayList(*ASTNode).init(self.allocator);
+        while (true) {
+            if (self.index + 1 >= self.tokens.len) return error.OutOfBoundsError;
+            if (tokentype == .SYMBOL) {
+                if (tokentype.SYMBOL == .r_roundBracket) break;
+            }
+
+            if (tokentype == .IDENTIFIER) {
+                const id_name = self.tokens[self.index].lexeme;
+                const id_node = try self.allocator.create(ASTNode);
+                id_node.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = id_name } } };
+
+                try arguments.append(id_node);
+                std.debug.print("arg!\n", .{});
+            }
+            if (tokentype == .STRING) {
+                const value = self.tokens[self.index].lexeme;
+                const str_node = try self.allocator.create(ASTNode);
+                str_node.* = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{ .value = value } } };
+
+                try arguments.append(str_node);
+                std.debug.print("arg!\n", .{});
+            }
+            if (tokentype == .CHAR) {
+                const value = self.tokens[self.index].lexeme[0];
+                const char_node = try self.allocator.create(ASTNode);
+                char_node.* = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = value } } };
+
+                try arguments.append(char_node);
+                std.debug.print("arg!\n", .{});
+            }
+            if (tokentype == .NUMBER) {
+                const value_unparsed = self.tokens[self.index].lexeme;
+                std.debug.print("{s}\n", .{value_unparsed});
+                const value = try std.fmt.parseInt(i64, value_unparsed, 10);
+                const num_node = try self.allocator.create(ASTNode);
+                num_node.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
+
+                try arguments.append(num_node);
+                std.debug.print("arg!\n", .{});
+            }
+
+            if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
+            self.index += 1;
+            tokentype = self.tokens[self.index].token_type;
+
+            if (tokentype == .PUNCTUATION) {
+                if (tokentype.PUNCTUATION == .comma) {
+                    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
+                    self.index += 1;
+                    tokentype = self.tokens[self.index].token_type;
+                }
+            }
+        }
         if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
         self.index += 1;
         tokentype = self.tokens[self.index].token_type;
@@ -502,12 +555,17 @@ pub fn parseAssignmentOrFnCall(self: *Parser) !?*ASTNode {
         const fnCall = try self.allocator.create(ASTNode);
 
         fnCall.* = .{ .kind = .FunctionReference, .data = .{ .FunctionReference = .{ .name = name } } };
+        std.debug.print("CALL\n", .{});
         return fnCall;
     } else return error.UnexpectedToken;
 
     return null;
 }
 
-pub fn parseNumberOrOperation(_: *Parser) !?*ASTNode {
-    return null;
+pub fn parseNumberOrOperation(self: *Parser) !?*ASTNode {
+    const value_unparsed = self.tokens[self.index].lexeme;
+    const value = try std.fmt.parseInt(i64, value_unparsed, 10);
+    const num_node = try self.allocator.create(ASTNode);
+    num_node.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
+    return num_node;
 }
