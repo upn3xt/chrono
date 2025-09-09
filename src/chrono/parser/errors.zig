@@ -7,3 +7,10 @@ pub const ParsingError = error{
 };
 const UnexpectedTokenError = error{UnexpectedToken};
 pub const ParserError = ParsingError || UnexpectedTokenError || ExpectedTokenError;
+
+pub fn errorHandler(err: ParserError) !void {
+    switch (err) {
+        UnexpectedTokenError => {},
+        else => {},
+    }
+}

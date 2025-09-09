@@ -199,3 +199,10 @@ Again, my logic IT IS right. Even tried switch the methods, and it still doesn't
 
 Fixed, it was missing updating the token type, lol. How did I find that? by printing and not returning an error, b was a comma, lol. I just was updating the 
 position but also missing the tokentype update.
+
+
+## It's super cool 
+
+Today, small improvements have made the language more alive! Parameters, arguments, comments, syntax highlighting and code editor integration! 
+Now when coding in chrono in this very editor, when using commstring it comments! (lmao) But the difference is that it feels integrated! Arguments 
+are now a thing, and before proceeding to transversing the AST, still have to do the binary operation thing. Then I can proceed to the analyzer.
