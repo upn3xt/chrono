@@ -74,7 +74,11 @@ pub fn ParseTokens(self: *Parser) ![]*ASTNode {
                         const var_node = try self.parseVariableDeclaration(isMutable);
                         try node_list.append(var_node);
                     },
-                    .function_kw => {},
+                    .function_kw => {
+                        const fn_node = try self.parseFunctionDeclaration();
+                        try node_list.append(fn_node);
+                    },
+                    .pub_kw => self.index += 1,
                     else => break,
                 }
             },
@@ -231,6 +235,78 @@ pub fn parseAssignment(self: *Parser) !*ASTNode {
 pub fn parseFunctionDeclaration(self: *Parser) !*ASTNode {
     const node = try self.allocator.create(ASTNode);
     try self.advance();
+
+    if (self.current_token.token_type != .IDENTIFIER) try self.errorHandler(error.ExpectedIdentifierError);
+    const fn_name = self.current_token.lexeme;
+
+    try self.advance();
+
+    if (self.current_token.token_type != .SYMBOL) return error.ExpectedSymbol;
+    if (self.current_token.token_type.SYMBOL != .l_roundBracket) return error.ExpectedSymbolLeftRoundBracket;
+
+    try self.advance();
+
+    var parameters = std.ArrayList(*ASTNode).init(self.allocator);
+    while (true) {
+        if (self.current_token.token_type == .SYMBOL)
+            if (self.current_token.token_type.SYMBOL == .r_roundBracket) break;
+
+        if (self.current_token.token_type != .IDENTIFIER) return error.ExpectedIdentifier;
+        const name = self.tokens[self.index].lexeme;
+
+        try self.advance();
+
+        if (self.current_token.token_type != .PUNCTUATION) return error.ExpectedPuntuaction;
+        if (self.current_token.token_type.PUNCTUATION != .colon) return error.ExpectedPuntuactionColon;
+
+        try self.advance();
+
+        if (self.current_token.token_type != .IDENTIFIER) return error.ExpectedIdentifier;
+        const par_type = self.tokens[self.index].lexeme;
+
+        const parameter = try self.allocator.create(ASTNode);
+        parameter.* = .{ .kind = .Parameter, .data = .{ .Parameter = .{ .name = name, .par_type = par_type } } };
+
+        try parameters.append(parameter);
+        std.debug.print("BANANA!\n", .{});
+
+        try self.advance();
+
+        if (self.current_token.token_type == .PUNCTUATION) {
+            if (self.current_token.token_type.PUNCTUATION == .comma) {
+                try self.advance();
+            }
+        }
+    }
+
+    try self.advance();
+
+    const ret_type = self.current_token.lexeme;
+
+    try self.advance();
+
+    if (self.current_token.token_type != .SYMBOL) return error.ExpectedSymbol;
+    if (self.current_token.token_type.SYMBOL != .l_curlyBracket) return error.ExpectedSymbolLeftCurlyBracket;
+
+    try self.advance();
+
+    const start_pos = self.index;
+
+    while (true) {
+        if (self.index + 1 >= self.tokens.len) return error.OutOfBoundsError;
+        self.advance();
+        if (self.current_token.token_type == .SYMBOL)
+            if (self.current_token.token_type.SYMBOL == .r_curlyBracket) break;
+    }
+
+    const fin_pos = self.index;
+
+    node.* = .{ .kind = .FunctionDeclaration, .data = .{ .FunctionDeclaration = .{
+        .name = fn_name,
+        .fn_type = ret_type,
+        .parameters = parameters.items,
+    } } };
+
     return node;
 }
 
