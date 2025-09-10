@@ -1,0 +1,4 @@
+const x = 10;
+const y: int = 30;
+var z = "string";
+z = "something else";

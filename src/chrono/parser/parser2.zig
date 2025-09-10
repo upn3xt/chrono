@@ -4,7 +4,17 @@ const Import = @import("../imports.zig");
 const Token = Import.Token;
 const ASTNode = Import.ASTNode;
 
-const ParserError = error{ IndexOutOfBoundsError, UnknowTokenError, UnexpectedTokenError, ExpectedPuntuactionError, ExpectedPuntuactionSemiColonError };
+const ExpectedTokenError = error{
+    ExpectedIdentifierError,
+    ExpectedPuntuactionError,
+    ExpectedPuntuactionSemiColonError,
+    ExpectedNumberLiteralError,
+    ExpecterOperator,
+    ExpectedOperatorEqual,
+    ExpectedPuntuactionColon,
+};
+const GeneralError = error{ IndexOutOfBoundsError, UnknowTokenError, UnexpectedTokenError };
+const ParserError = GeneralError || ExpectedTokenError;
 
 const Parser = @This();
 
@@ -18,7 +28,7 @@ pub fn init(allocator: std.mem.Allocator, tokens: []Token) Parser {
 }
 
 pub fn advance(self: *Parser) !void {
-    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) try self.errorHandler(error.IndexOutOfBoundsError);
+    if (self.index + 1 >= self.tokens.len) try self.errorHandler(error.IndexOutOfBoundsError);
 
     self.index += 1;
     self.current_token = self.tokens[self.index];
@@ -29,16 +39,23 @@ pub fn previous(self: *Parser) !void {
     self.current_token = self.tokens[self.index];
 }
 
-pub fn errorHandler(self: *Parser, err: ParserError) !void {
+pub fn errorHandler(self: *Parser, err: ParserError) ParserError!void {
     switch (err) {
         error.IndexOutOfBoundsError => {
             std.debug.print("Failed to advance any further. Reached EOF early at position {}.\n Last token: {s}\n", .{ self.index, self.current_token.lexeme });
+            return err;
         },
         error.UnknowTokenError => {
             std.debug.print("Unknow token found at position {}. Token: {s}\n", .{ self.index, self.current_token.lexeme });
+            return err;
         },
         error.UnexpectedTokenError => {
             std.debug.print("Unexpected token at position {}. Token: {s}\n", .{ self.index, self.current_token.lexeme });
+            return err;
+        },
+        else => {
+            std.debug.print("Unknow error.\n Check index {}.\nLast Token: {s}\n", .{ self.index, self.current_token.lexeme });
+            return err;
         },
     }
 }
@@ -58,9 +75,13 @@ pub fn ParseTokens(self: *Parser) ![]*ASTNode {
                         try node_list.append(var_node);
                     },
                     .function_kw => {},
+                    else => break,
                 }
             },
-            .IDENTIFIER => {},
+            .IDENTIFIER => {
+                const id_node = try self.parseAssignment();
+                try node_list.append(id_node);
+            },
             .COMMENT => self.index += 1,
             .UNKNOWN => try self.errorHandler(error.UnknowTokenError),
             .EOF => break,
@@ -75,7 +96,7 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !*ASTNode {
     const exp = try self.allocator.create(ASTNode);
     try self.advance();
 
-    if (self.current_token.token_type != .IDENTIFIER) try self.errorHandler(error.ExpectedIdentifier);
+    if (self.current_token.token_type != .IDENTIFIER) try self.errorHandler(error.ExpectedIdentifierError);
     const name = self.current_token.lexeme;
 
     try self.advance();
@@ -101,18 +122,109 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !*ASTNode {
 
         try self.advance();
 
-        try self.checkForSemicolon();
-    }
-    if (self.current_token.token_type == .PUNCTUATION) {}
+        try self.semiAndGo();
 
-    const node = try self.allocator.create(ASTNode);
-    node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .name = name, .expression = exp, .mutable = isMutable } } };
-    return node;
+        const node = try self.allocator.create(ASTNode);
+        node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{
+            .name = name,
+            .expression = exp,
+            .mutable = isMutable,
+        } } };
+
+        std.debug.print("{s}! Mutable: {}\n", .{ name, isMutable });
+
+        return node;
+    }
+    if (self.current_token.token_type == .PUNCTUATION) {
+        if (self.current_token.token_type.PUNCTUATION != .colon) try self.errorHandler(error.ExpectedPuntuactionColon);
+        try self.advance();
+
+        if (self.current_token.token_type != .IDENTIFIER) try self.errorHandler(error.ExpectedIdentifierError);
+        const var_tpe = self.current_token.lexeme;
+
+        try self.advance();
+
+        if (self.current_token.token_type != .OPERATOR) try self.errorHandler(error.ExpecterOperator);
+        if (self.current_token.token_type.OPERATOR != .equal) try self.errorHandler(error.ExpectedOperatorEqual);
+
+        try self.advance();
+
+        switch (self.current_token.token_type) {
+            .STRING => {
+                const value = self.current_token.lexeme;
+                exp.* = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{ .value = value } } };
+            },
+            .CHAR => {
+                const value = self.current_token.lexeme[0];
+                exp.* = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = value } } };
+            },
+            .NUMBER => {
+                const value = try self.parseNumberLiteral();
+                exp.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
+            },
+            else => try self.errorHandler(error.UnknowTokenError),
+        }
+
+        try self.advance();
+
+        try self.semiAndGo();
+
+        const node = try self.allocator.create(ASTNode);
+        node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{
+            .name = name,
+            .expression = exp,
+            .mutable = isMutable,
+            .var_type = var_tpe,
+        } } };
+
+        std.debug.print("{s}! Mutable: {}\n", .{ name, isMutable });
+        return node;
+    } else {
+        try self.errorHandler(error.UnexpectedTokenError);
+    }
+    return error.OperationVarDecFailed;
 }
 
 pub fn parseAssignment(self: *Parser) !*ASTNode {
-    const node = try self.allocator.create(ASTNode);
+    const exp = try self.allocator.create(ASTNode);
+
+    if (self.current_token.token_type != .IDENTIFIER) try self.errorHandler(error.ExpectedIdentifierError);
+    const name = self.current_token.lexeme;
+    const var_node = try self.allocator.create(ASTNode);
+    var_node.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = name } } };
+
     try self.advance();
+
+    if (self.current_token.token_type != .OPERATOR) return error.ExpectedOperator;
+    if (self.current_token.token_type.OPERATOR != .equal) try self.errorHandler(error.ExpectedOperatorEqual);
+
+    try self.advance();
+
+    switch (self.current_token.token_type) {
+        .STRING => {
+            const value = self.current_token.lexeme;
+            exp.* = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{ .value = value } } };
+        },
+        .CHAR => {
+            const value = self.current_token.lexeme[0];
+            exp.* = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = value } } };
+        },
+        .NUMBER => {
+            const value = try self.parseNumberLiteral();
+            exp.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
+        },
+        else => try self.errorHandler(error.UnknowTokenError),
+    }
+
+    try self.advance();
+
+    try self.semiAndGo();
+
+    const node = try self.allocator.create(ASTNode);
+    node.* = .{ .kind = .Assignment, .data = .{ .Assignment = .{ .variable = var_node, .expression = exp } } };
+
+    std.debug.print("{s} mutated!\n", .{name});
+
     return node;
 }
 
@@ -139,7 +251,8 @@ pub fn parseNumberLiteral(self: *Parser) !i64 {
     return value;
 }
 
-pub fn checkForSemicolon(self: *Parser) !void {
+pub fn semiAndGo(self: *Parser) !void {
     if (self.current_token.token_type != .PUNCTUATION) try self.errorHandler(error.ExpectedPuntuactionError);
     if (self.current_token.token_type.PUNCTUATION != .semi_colon) try self.errorHandler(error.ExpectedPuntuactionSemiColonError);
+    try self.advance();
 }

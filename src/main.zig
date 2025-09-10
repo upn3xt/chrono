@@ -3,13 +3,13 @@ const Import = @import("chrono/imports.zig");
 
 const Token = Import.Token;
 const Lexer = Import.Lexer;
-const Parser = Import.Parser;
+const Parser = Import.Parser2;
 const ASTNode = Import.ASTNode;
 const Analyzer = Import.Analyzer;
 const Printer = Import.Printer;
 
 pub fn main() !void {
-    var file = try std.fs.cwd().openFile("syntaxv1/func.chro", .{ .mode = .read_only });
+    var file = try std.fs.cwd().openFile("syntaxv1/plain.chro", .{ .mode = .read_only });
 
     var contentBuf: [1024]u8 = undefined;
     const contentBytes = try file.readAll(&contentBuf);
@@ -35,9 +35,5 @@ pub fn main() !void {
 
     // Printer.printAST(nodes);
 
-    if (nodes != null) {
-        std.debug.print("Nodes has length of {}\n", .{nodes.?.len});
-    } else {
-        std.debug.print("Nodes returned null.\n", .{});
-    }
+    std.debug.print("Nodes has length of {}\n", .{nodes.len});
 }
