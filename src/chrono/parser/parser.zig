@@ -569,3 +569,7 @@ pub fn parseNumberOrOperation(self: *Parser) !?*ASTNode {
     num_node.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
     return num_node;
 }
+
+// pub fn parseBinaryOperation(self:*Parser) !?*ASTNode {
+//     if()
+// }

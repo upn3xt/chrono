@@ -18,7 +18,13 @@ pub fn main() !void {
 
     var lexer = Lexer.init(content);
 
-    const allocator = std.heap.page_allocator;
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+
+    var arena = std.heap.ArenaAllocator.init(gpa.allocator());
+    defer arena.deinit();
+
+    const allocator = arena.allocator();
 
     const tokens = try lexer.tokens();
 

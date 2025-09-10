@@ -206,3 +206,11 @@ position but also missing the tokentype update.
 Today, small improvements have made the language more alive! Parameters, arguments, comments, syntax highlighting and code editor integration! 
 Now when coding in chrono in this very editor, when using commstring it comments! (lmao) But the difference is that it feels integrated! Arguments 
 are now a thing, and before proceeding to transversing the AST, still have to do the binary operation thing. Then I can proceed to the analyzer.
+
+
+## I'm scared 
+
+Rn I need to make the binary operation thing. But the thing is, im scared. I guess its scared of failing. Not sure why but yea. Also, asking myself if this 
+is worth it. It is. Just stalling for as long as I can...
+
+Planning in remaking the parser again with helper functions, proper error handling(fr this time) and some extra properties like current token to avoid repetition.
