@@ -144,7 +144,6 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !*ASTNode {
         try self.advance();
 
         if (self.current_token.token_type != .IDENTIFIER) try self.errorHandler(error.ExpectedIdentifierError);
-        const var_tpe = self.current_token.lexeme;
 
         try self.advance();
 
@@ -178,7 +177,6 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !*ASTNode {
             .name = name,
             .expression = exp,
             .mutable = isMutable,
-            .var_type = var_tpe,
         } } };
 
         std.debug.print("{s}! Mutable: {}\n", .{ name, isMutable });

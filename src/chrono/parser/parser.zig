@@ -573,3 +573,230 @@ pub fn parseNumberOrOperation(self: *Parser) !?*ASTNode {
 // pub fn parseBinaryOperation(self:*Parser) !?*ASTNode {
 //     if()
 // }
+//
+// const std = @import("std");
+//
+// pub const TokenType = enum {
+//     number,
+//     plus,
+//     minus,
+//     star,
+//     slash,
+//     eof,
+// };
+//
+// pub const Token = struct {
+//     kind: TokenType,
+//     value: ?i64 = null,
+// };
+//
+// pub fn tokenize(input: []const u8, allocator: std.mem.Allocator) ![]Token {
+//     var list = std.ArrayList(Token).init(allocator);
+//     var i: usize = 0;
+//
+//     while (i < input.len) {
+//         const c = input[i];
+//         switch (c) {
+//             '0'...'9' => {
+//                 var start = i;
+//                 while (i < input.len and input[i] >= '0' and input[i] <= '9') : (i += 1) {}
+//                 const num_str = input[start..i];
+//                 const val = try std.fmt.parseInt(i64, num_str, 10);
+//                 try list.append(Token{ .kind = .number, .value = val });
+//                 continue;
+//             },
+//             '+' => try list.append(Token{ .kind = .plus }),
+//             '-' => try list.append(Token{ .kind = .minus }),
+//             '*' => try list.append(Token{ .kind = .star }),
+//             '/' => try list.append(Token{ .kind = .slash }),
+//             ' ', '\t', '\n' => {},
+//             else => return error.InvalidCharacter,
+//         }
+//         i += 1;
+//     }
+//     try list.append(Token{ .kind = .eof });
+//     return list.toOwnedSlice();
+// }
+//
+// pub const Parser = struct {
+//     tokens: []const Token,
+//     index: usize,
+//
+//     fn peek(self: *Parser) Token {
+//         return self.tokens[self.index];
+//     }
+//
+//     fn advance(self: *Parser) void {
+//         if (self.index < self.tokens.len - 1) self.index += 1;
+//     }
+//
+//     fn parse_expression(self: *Parser, min_bp: u8) i64 {
+//         var tok = self.peek();
+//         var lhs: i64 = switch (tok.kind) {
+//             .number => blk: {
+//                 self.advance();
+//                 break :blk tok.value.?;
+//             },
+//             else => unreachable,
+//         };
+//
+//         while (true) {
+//             tok = self.peek();
+//             const (lbp, rbp): ?struct { u8, u8 } = switch (tok.kind) {
+//                 .plus, .minus => .{ 10, 11 },
+//                 .star, .slash => .{ 20, 21 },
+//                 else => null,
+//             };
+//             if (lbp == null or lbp.? < min_bp) break;
+//
+//             self.advance();
+//             const rhs = self.parse_expression(rbp.?);
+//
+//             lhs = switch (tok.kind) {
+//                 .plus => lhs + rhs,
+//                 .minus => lhs - rhs,
+//                 .star => lhs * rhs,
+//                 .slash => lhs / rhs,
+//                 else => unreachable,
+//             };
+//         }
+//
+//         return lhs;
+//     }
+// };
+//
+// pub fn main() !void {
+//     const input = "4*5+3";
+//     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+//     defer _ = gpa.deinit();
+//     const allocator = gpa.allocator();
+//
+//     const tokens = try tokenize(input, allocator);
+//     defer allocator.free(tokens);
+//
+//     var parser = Parser{ .tokens = tokens, .index = 0 };
+//     const result = parser.parse_expression(0);
+//
+//     std.debug.print("Result of {s} = {}\n", .{ input, result });
+// }
+//
+//
+//
+//
+//
+// const std = @import("std");
+//
+// pub const TokenType = enum {
+//     number,
+//     plus,
+//     minus,
+//     star,
+//     slash,
+//     lparen,
+//     rparen,
+//     eof,
+// };
+//
+// pub const Token = struct {
+//     kind: TokenType,
+//     value: ?i64 = null,
+// };
+//
+// pub fn tokenize(input: []const u8, allocator: std.mem.Allocator) ![]Token {
+//     var list = std.ArrayList(Token).init(allocator);
+//     var i: usize = 0;
+//
+//     while (i < input.len) {
+//         const c = input[i];
+//         switch (c) {
+//             '0'...'9' => {
+//                 var start = i;
+//                 while (i < input.len and input[i] >= '0' and input[i] <= '9') : (i += 1) {}
+//                 const num_str = input[start..i];
+//                 const val = try std.fmt.parseInt(i64, num_str, 10);
+//                 try list.append(Token{ .kind = .number, .value = val });
+//                 continue;
+//             },
+//             '+' => try list.append(Token{ .kind = .plus }),
+//             '-' => try list.append(Token{ .kind = .minus }),
+//             '*' => try list.append(Token{ .kind = .star }),
+//             '/' => try list.append(Token{ .kind = .slash }),
+//             '(' => try list.append(Token{ .kind = .lparen }),
+//             ')' => try list.append(Token{ .kind = .rparen }),
+//             ' ', '\t', '\n' => {},
+//             else => return error.InvalidCharacter,
+//         }
+//         i += 1;
+//     }
+//     try list.append(Token{ .kind = .eof });
+//     return list.toOwnedSlice();
+// }
+//
+// pub const Parser = struct {
+//     tokens: []const Token,
+//     index: usize,
+//
+//     fn peek(self: *Parser) Token {
+//         return self.tokens[self.index];
+//     }
+//
+//     fn advance(self: *Parser) void {
+//         if (self.index < self.tokens.len - 1) self.index += 1;
+//     }
+//
+//     fn parse_expression(self: *Parser, min_bp: u8) i64 {
+//         var tok = self.peek();
+//         var lhs: i64 = switch (tok.kind) {
+//             .number => blk: {
+//                 self.advance();
+//                 break :blk tok.value.?;
+//             },
+//             .lparen => blk: {
+//                 self.advance(); // consume '('
+//                 const expr = self.parse_expression(0);
+//                 if (self.peek().kind != .rparen) @panic("missing closing parenthesis");
+//                 self.advance(); // consume ')'
+//                 break :blk expr;
+//             },
+//             else => @panic("unexpected token in prefix"),
+//         };
+//
+//         while (true) {
+//             tok = self.peek();
+//             const (lbp, rbp): ?struct { u8, u8 } = switch (tok.kind) {
+//                 .plus, .minus => .{ 10, 11 },
+//                 .star, .slash => .{ 20, 21 },
+//                 else => null,
+//             };
+//             if (lbp == null or lbp.? < min_bp) break;
+//
+//             self.advance();
+//             const rhs = self.parse_expression(rbp.?);
+//
+//             lhs = switch (tok.kind) {
+//                 .plus => lhs + rhs,
+//                 .minus => lhs - rhs,
+//                 .star => lhs * rhs,
+//                 .slash => lhs / rhs,
+//                 else => unreachable,
+//             };
+//         }
+//
+//         return lhs;
+//     }
+// };
+//
+// pub fn main() !void {
+//     const input = "(4*5)+3";
+//     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+//     defer _ = gpa.deinit();
+//     const allocator = gpa.allocator();
+//
+//     const tokens = try tokenize(input, allocator);
+//     defer allocator.free(tokens);
+//
+//     var parser = Parser{ .tokens = tokens, .index = 0 };
+//     const result = parser.parse_expression(0);
+//
+//     std.debug.print("Result of {s} = {}\n", .{ input, result });
+// }
