@@ -1,10 +1,16 @@
+const Import = @import("../imports.zig");
+
+const Analyzer = Import.Analyzer;
+
+const Type = Analyzer.Type;
+
 const ASTNode = @This();
 
 kind: NodeKind,
 data: union(NodeKind) {
     VariableDeclaration: struct {
         name: []const u8,
-        var_type: ?[]const u8 = null,
+        var_type: ?Type = null,
         expression: ?*ASTNode,
         mutable: bool = false,
     },

@@ -36,4 +36,10 @@ pub fn main() !void {
     // Printer.printAST(nodes);
 
     std.debug.print("Nodes has length of {}\n", .{nodes.len});
+
+    const sym = std.StringHashMap(Analyzer.Type).init(allocator);
+
+    var analyzer = Analyzer.init(nodes, sym);
+
+    try analyzer.analyzer();
 }

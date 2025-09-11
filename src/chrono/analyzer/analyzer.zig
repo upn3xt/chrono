@@ -5,33 +5,60 @@ const ASTNode = Import.ASTNode;
 
 const Analyzer = @This();
 
-pub const Type = enum { Int, Float, String, Bool };
+nodes: []*ASTNode,
+symbols: std.StringHashMap(Type),
 
-pub fn analyzeVariableDeclaration(
-    symbols: *std.StringHashMap(Type),
-    node: *ASTNode,
-) !void {
-    // Assume node.kind == .VariableDeclaration
+pub const Type = enum { Int, Float, String, Bool, Char };
+
+pub fn init(nodes: []*ASTNode, symbols: std.StringHashMap(Type)) Analyzer {
+    return Analyzer{ .nodes = nodes, .symbols = symbols };
+}
+
+pub fn analyzer(self: *Analyzer) !void {
+    var index: usize = 0;
+    while (true) : (index += 1) {
+        if (index == self.nodes.len) break;
+        const node = self.nodes[index];
+        switch (node.kind) {
+            .VariableDeclaration => {
+                try self.analyzeVariableDeclaration(node);
+            },
+            .Assignment => {},
+            else => return error.SomeError,
+        }
+    }
+}
+
+pub fn analyzeVariableDeclaration(self: *Analyzer, node: *ASTNode) !void {
     const name = node.data.VariableDeclaration.name;
-    const expr_node = node.data.VariableDeclaration.expression;
 
-    // Type inference from expression node
-    var expr_type: Type = undefined;
-    switch (expr_node.?.kind) {
-        .NumberLiteral => expr_type = Type.Int,
-        // add other cases (FloatLiteral, StringLiteral, etc.)
+    const exp = node.data.VariableDeclaration.expression;
+
+    var exp_type: Type = undefined;
+
+    if (exp == null) {
+        std.debug.print("Error, expression node for variable {s} is null.", .{name});
+        return error.ExpressionNodeNullError;
+    }
+    switch (exp.?.kind) {
+        .NumberLiteral => {
+            exp_type = .Int;
+        },
+        .StringLiteral => {
+            exp_type = .String;
+        },
+        .CharLiteral => {
+            exp_type = .Char;
+        },
         else => return error.InvalidType,
     }
 
-    // Check redeclaration
-    if (symbols.get(name)) |x| {
-        _ = x;
-        return error.DuplicateDeclaration;
+    if (self.symbols.get(name)) |_| {
+        std.debug.print("Variable already declared.\n", .{});
+        return error.RedeclarationError;
     }
 
-    // Add to symbol table
-    try symbols.put(name, expr_type);
+    try self.symbols.put(name, exp_type);
 
-    // Optionally annotate node type for codegen
-    // node.annotation_type = expr_type; (requires field added to ASTNode)
+    // node.data.VariableDeclaration.var_type = exp_type;
 }

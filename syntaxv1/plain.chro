@@ -1,13 +1,13 @@
 
 // please work
 
-const a = 'A';
-const b = 67;
+const a = 20;
+const b = 3;
 
-pub fn main() void {
-    const don = "toliver";
-}
-
-fn ret25() i32 {
-  return 25; 
-}
+// pub fn main() void {
+//     const don = "toliver";
+// }
+//
+// fn ret25() i32 {
+//   return 25; 
+// }
