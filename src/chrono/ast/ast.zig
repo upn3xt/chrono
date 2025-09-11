@@ -2,7 +2,12 @@ const ASTNode = @This();
 
 kind: NodeKind,
 data: union(NodeKind) {
-    VariableDeclaration: struct { name: []const u8, var_type: ?[]const u8 = null, expression: ?*ASTNode, mutable: bool = false },
+    VariableDeclaration: struct {
+        name: []const u8,
+        var_type: ?[]const u8 = null,
+        expression: ?*ASTNode,
+        mutable: bool = false,
+    },
 
     VariableReference: struct { name: []const u8, mutable: bool = false },
 
@@ -31,6 +36,7 @@ data: union(NodeKind) {
         fn_type: []const u8,
         body: []*ASTNode,
         parameters: ?[]*ASTNode = null,
+        value: ?[]const u8 = null,
     },
 
     FunctionReference: struct { name: []const u8, arguments: ?[]*ASTNode = null },
@@ -41,4 +47,15 @@ data: union(NodeKind) {
     },
 },
 
-pub const NodeKind = enum { VariableDeclaration, VariableReference, NumberLiteral, StringLiteral, CharLiteral, BinaryOperation, Assignment, FunctionDeclaration, FunctionReference, Parameter };
+pub const NodeKind = enum {
+    VariableDeclaration,
+    VariableReference,
+    NumberLiteral,
+    StringLiteral,
+    CharLiteral,
+    BinaryOperation,
+    Assignment,
+    FunctionDeclaration,
+    FunctionReference,
+    Parameter,
+};

@@ -78,7 +78,7 @@ pub fn ParseTokens(self: *Parser) ![]*ASTNode {
                         const fn_node = try self.parseFunctionDeclaration();
                         try node_list.append(fn_node);
                     },
-                    .pub_kw => self.index += 1,
+                    .pub_kw => try self.advance(),
                     else => break,
                 }
             },
@@ -86,7 +86,7 @@ pub fn ParseTokens(self: *Parser) ![]*ASTNode {
                 const id_node = try self.parseAssignment();
                 try node_list.append(id_node);
             },
-            .COMMENT => self.index += 1,
+            .COMMENT => try self.advance(),
             .UNKNOWN => try self.errorHandler(error.UnknowTokenError),
             .EOF => break,
             else => try self.errorHandler(error.UnexpectedTokenError),
@@ -217,7 +217,7 @@ pub fn parseAssignment(self: *Parser) !*ASTNode {
             const value = try self.parseNumberLiteral();
             exp.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
         },
-        else => try self.errorHandler(error.UnknowTokenError),
+        else => try self.errorHandler(error.UnexpectedTokenError),
     }
 
     try self.advance();
@@ -268,7 +268,7 @@ pub fn parseFunctionDeclaration(self: *Parser) !*ASTNode {
         parameter.* = .{ .kind = .Parameter, .data = .{ .Parameter = .{ .name = name, .par_type = par_type } } };
 
         try parameters.append(parameter);
-        std.debug.print("BANANA!\n", .{});
+        std.debug.print("param {s}\n", .{name});
 
         try self.advance();
 
@@ -293,19 +293,28 @@ pub fn parseFunctionDeclaration(self: *Parser) !*ASTNode {
     const start_pos = self.index;
 
     while (true) {
-        if (self.index + 1 >= self.tokens.len) return error.OutOfBoundsError;
-        self.advance();
+        try self.advance();
         if (self.current_token.token_type == .SYMBOL)
             if (self.current_token.token_type.SYMBOL == .r_curlyBracket) break;
     }
 
     const fin_pos = self.index;
 
+    self.index = start_pos;
+    const body = try self.parseFunctionBody();
+
     node.* = .{ .kind = .FunctionDeclaration, .data = .{ .FunctionDeclaration = .{
         .name = fn_name,
         .fn_type = ret_type,
         .parameters = parameters.items,
+        .body = body,
     } } };
+
+    self.index = fin_pos;
+
+    try self.advance();
+
+    std.debug.print("fn {s} defined!\n", .{fn_name});
 
     return node;
 }
@@ -316,10 +325,41 @@ pub fn parseFunctionCall(self: *Parser) !*ASTNode {
     return node;
 }
 
-pub fn parseFunctionBody(self: *Parser) !*ASTNode {
-    const node = try self.allocator.create(ASTNode);
-    try self.advance();
-    return node;
+pub fn parseFunctionBody(self: *Parser) ![]*ASTNode {
+    var body = std.ArrayList(*ASTNode).init(self.allocator);
+
+    while (true) {
+        switch (self.current_token.token_type) {
+            .KEYWORD => |key| {
+                switch (key) {
+                    .const_kw, .var_kw => {
+                        var isMutable = false;
+                        if (key == .var_kw) isMutable = true;
+                        const var_node = try self.parseVariableDeclaration(isMutable);
+                        try body.append(var_node);
+                    },
+                    .return_kw => {
+                        const ret_node = try self.parseReturn();
+                        try body.append(ret_node);
+                    },
+                    else => break,
+                }
+            },
+            .IDENTIFIER => {
+                const id_node = try self.parseAssignment();
+                try body.append(id_node);
+            },
+            .SYMBOL => |s| {
+                if (s != .r_curlyBracket) try self.errorHandler(error.UnexpectedTokenError);
+                break;
+            },
+            .COMMENT => try self.advance(),
+            .UNKNOWN => try self.errorHandler(error.UnknowTokenError),
+            .EOF => break,
+            else => try self.errorHandler(error.UnexpectedTokenError),
+        }
+    }
+    return body.items;
 }
 
 pub fn parseNumberLiteral(self: *Parser) !i64 {
@@ -331,4 +371,33 @@ pub fn semiAndGo(self: *Parser) !void {
     if (self.current_token.token_type != .PUNCTUATION) try self.errorHandler(error.ExpectedPuntuactionError);
     if (self.current_token.token_type.PUNCTUATION != .semi_colon) try self.errorHandler(error.ExpectedPuntuactionSemiColonError);
     try self.advance();
+}
+
+pub fn parseReturn(self: *Parser) !*ASTNode {
+    const exp = try self.allocator.create(ASTNode);
+    try self.advance();
+
+    switch (self.current_token.token_type) {
+        .STRING => {
+            const value = self.current_token.lexeme;
+            std.debug.print("returning {s}...\n", .{value});
+            exp.* = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{ .value = value } } };
+        },
+        .CHAR => {
+            const value = self.current_token.lexeme[0];
+            std.debug.print("returning {c}...\n", .{value});
+            exp.* = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = value } } };
+        },
+        .NUMBER => {
+            const value = try self.parseNumberLiteral();
+            std.debug.print("returning {}...\n", .{value});
+            exp.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
+        },
+        else => try self.errorHandler(error.UnexpectedTokenError),
+    }
+
+    try self.semiAndGo();
+
+    try self.advance();
+    return exp;
 }

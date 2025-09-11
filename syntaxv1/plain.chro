@@ -1,4 +1,13 @@
-const x = 10;
-const y: int = 30;
-var z = "string";
-z = "something else";
+
+// please work
+
+const a = 'A';
+const b = 67;
+
+pub fn main() void {
+    const don = "toliver";
+}
+
+fn ret25() i32 {
+  return 25; 
+}
