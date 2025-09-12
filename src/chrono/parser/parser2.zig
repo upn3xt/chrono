@@ -97,7 +97,7 @@ pub fn ParseTokens(self: *Parser) ![]*ASTNode {
 }
 
 pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !*ASTNode {
-    var exp = try self.allocator.create(ASTNode);
+    const exp = try self.allocator.create(ASTNode);
     try self.advance();
 
     if (self.current_token.token_type != .IDENTIFIER) try self.errorHandler(error.ExpectedIdentifierError);
@@ -118,8 +118,9 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !*ASTNode {
                 exp.* = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = value } } };
             },
             .NUMBER => {
-                const value = try self.parseNumOrBinaryOp(0);
-                exp = value;
+                const value = try self.parseNumber(0);
+                std.debug.print("Result: {}\n", .{value});
+                exp.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
 
                 const node = try self.allocator.create(ASTNode);
                 node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{
@@ -129,8 +130,6 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !*ASTNode {
                 } } };
 
                 std.debug.print("{s}! Mutable: {}\n", .{ name, isMutable });
-
-                // std.debug.print("{} {c} {}\n", .{ node.data.BinaryOperation.left, node.data.BinaryOperation.operator, node.data.BinaryOperation.right });
 
                 return node;
             },
@@ -175,8 +174,8 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !*ASTNode {
                 exp.* = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = value } } };
             },
             .NUMBER => {
-                const value = try self.parseNumOrBinaryOp(0);
-                exp.* = value.*;
+                const value = try self.parseNumber(0);
+                exp.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
             },
             else => try self.errorHandler(error.UnknowTokenError),
         }
@@ -225,8 +224,8 @@ pub fn parseAssignment(self: *Parser) !*ASTNode {
             exp.* = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = value } } };
         },
         .NUMBER => {
-            const value = try self.parseNumOrBinaryOp(0);
-            exp.* = value.*;
+            const value = try self.parseNumber(0);
+            exp.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
         },
         else => try self.errorHandler(error.UnexpectedTokenError),
     }
@@ -373,14 +372,9 @@ pub fn parseFunctionBody(self: *Parser) ![]*ASTNode {
     return body.items;
 }
 
-pub fn parseNumOrBinaryOp(self: *Parser, min_bp: u8) !*ASTNode {
-    const allocator = self.allocator;
+pub fn parseNumber(self: *Parser, min_bp: u8) !i64 {
+    var left = try std.fmt.parseInt(i64, self.current_token.lexeme, 10);
 
-    // Create left node for number literal
-    var left = try allocator.create(ASTNode);
-    const valueLex = self.current_token.lexeme;
-    const value = try std.fmt.parseInt(i64, valueLex, 10);
-    left.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
     try self.advance();
 
     while (true) {
@@ -412,62 +406,15 @@ pub fn parseNumOrBinaryOp(self: *Parser, min_bp: u8) !*ASTNode {
         try self.advance();
 
         // Parse right-hand side expression with right binding power
-        const rhs = try self.parseNumOrBinaryOp(binding.?.rbp);
+        const rhs = try self.parseNumber(binding.?.rbp);
 
-        // Build new binary operation node with left and right subtree
-        const binOp = try allocator.create(ASTNode);
-        binOp.* = .{ .kind = .BinaryOperation, .data = .{ .BinaryOperation = .{
-            .left = left,
-            .operator = switch (op) {
-                .plus => '+',
-                .minus => '-',
-                .times => '*',
-                .divideBy => '/',
-                else => return error.SomeError,
-            },
-            .right = rhs,
-        } } };
-
-        // Assign new combined node to left for further chaining
-        left = binOp;
-    }
-
-    switch (left.kind) {
-        .BinaryOperation => {
-            const l = left.data.BinaryOperation.left;
-
-            const op = left.data.BinaryOperation.operator;
-
-            const r = left.data.BinaryOperation.right;
-
-            const x = switch (l.kind) {
-                .NumberLiteral => l.data.NumberLiteral.value,
-                else => null,
-            };
-            const y = switch (r.kind) {
-                .NumberLiteral => r.data.NumberLiteral.value,
-                else => null,
-            };
-
-            var result: ?i64 = undefined;
-            if (x != null or y != null) {
-                result = switch (op) {
-                    '+' => x.? + y.?,
-                    '-' => x.? - y.?,
-                    '*' => x.? * y.?,
-                    '/' => blks: {
-                        if (x == 0) return error.SomeError;
-                        const z = @divFloor(x.?, y.?);
-                        break :blks z;
-                    },
-                    else => null,
-                };
-            }
-            if (result != null) {
-                std.debug.print("Result: {}\n", .{result.?});
-            } else return error.SomeError;
-        },
-        else => {},
+        left = switch (op) {
+            .plus => left + rhs,
+            .minus => left - rhs,
+            .times => left * rhs,
+            .divideBy => @divFloor(left, rhs),
+            else => unreachable,
+        };
     }
 
     return left;
@@ -494,8 +441,8 @@ pub fn parseReturn(self: *Parser) !*ASTNode {
             exp.* = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = value } } };
         },
         .NUMBER => {
-            const value = try self.parseNumOrBinaryOp(0);
-            exp.* = value.*;
+            const value = try self.parseNumber(0);
+            exp.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
         },
         else => try self.errorHandler(error.UnexpectedTokenError),
     }
