@@ -62,8 +62,7 @@ pub fn analyzeVariableDeclaration(self: *Analyzer, node: *ASTNode) !void {
 
     try self.symbols.put(name, exp_type);
 
-    if (var_type == null)
+    if (var_type == null) {
         node.data.VariableDeclaration.var_type = exp_type;
-
-    if (var_type.? != exp_type) return error.SomeError;
+    } else if (var_type.? != exp_type) return error.SomeError;
 }
