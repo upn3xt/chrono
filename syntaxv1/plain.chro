@@ -1,1 +1,10 @@
-const b = 4 + 5 * 3;
+
+const x = 1 + 3 * 4;
+
+// pub fn main() void {
+//     const x = add();    
+// }
+//
+// fn add() int {
+//     return 1 + 2;
+// }
