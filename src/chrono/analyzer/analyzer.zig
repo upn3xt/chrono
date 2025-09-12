@@ -52,6 +52,9 @@ pub fn analyzeVariableDeclaration(self: *Analyzer, node: *ASTNode) !void {
         .CharLiteral => {
             exp_type = .Char;
         },
+        .BinaryOperation => {
+            //TODO: WORK HERE
+        },
         else => return error.InvalidType,
     }
 

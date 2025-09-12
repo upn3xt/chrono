@@ -377,7 +377,7 @@ pub fn parseNumOrBinaryOp(self: *Parser, min_bp: u8) !*ASTNode {
     const allocator = self.allocator;
 
     // Create left node for number literal
-    const left = try allocator.create(ASTNode);
+    var left = try allocator.create(ASTNode);
     const valueLex = self.current_token.lexeme;
     const value = try std.fmt.parseInt(i64, valueLex, 10);
     left.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
@@ -429,19 +429,39 @@ pub fn parseNumOrBinaryOp(self: *Parser, min_bp: u8) !*ASTNode {
         } } };
 
         // Assign new combined node to left for further chaining
-        left.* = binOp.*;
+        left = binOp;
     }
 
     switch (left.kind) {
-        .BinaryOperation => {
-            std.debug.print("{} {c} {}\n", .{ left.*.data.BinaryOperation.left, left.*.data.BinaryOperation.operator, left.*.data.BinaryOperation.right });
-        },
-        .NumberLiteral => {
-            std.debug.print("{}\n", .{left.*.data.NumberLiteral.value});
-        },
-        else => unreachable,
+        .BinaryOperation => {},
     }
-    // std.debug.print("{} {c} {}\n", .{ left.*.data.BinaryOperation.left, left.*.data.BinaryOperation.operator, left.*.data.BinaryOperation.right });
+    // switch (left.kind) {
+    //     .BinaryOperation => {
+    //         const l = left.data.BinaryOperation.left;
+    //
+    //         const op = left.data.BinaryOperation.operator;
+    //
+    //         const r = left.data.BinaryOperation.right;
+    //
+    //         switch (l.kind) {
+    //             .NumberLiteral => {
+    //                 std.debug.print("{}\n", .{l.data.NumberLiteral.value});
+    //             },
+    //             else => {},
+    //         }
+    //         std.debug.print("{c}\n", .{op});
+    //         switch (r.kind) {
+    //             .NumberLiteral => {
+    //                 std.debug.print("{}\n", .{r.data.NumberLiteral.value});
+    //             },
+    //             else => {},
+    //         }
+    //     },
+    //     .NumberLiteral => {
+    //         std.debug.print("{}\n", .{left.data.NumberLiteral.value});
+    //     },
+    //     else => {},
+    // }
 
     return left;
 }
