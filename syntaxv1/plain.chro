@@ -1,12 +1,1 @@
-
-// please work
-
-const b = 3;
-
-// pub fn main() void {
-//     const don = "toliver";
-// }
-//
-// fn ret25() i32 {
-//   return 25; 
-// }
+const b = 4;

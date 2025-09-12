@@ -97,7 +97,7 @@ pub fn ParseTokens(self: *Parser) ![]*ASTNode {
 }
 
 pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !*ASTNode {
-    const exp = try self.allocator.create(ASTNode);
+    var exp = try self.allocator.create(ASTNode);
     try self.advance();
 
     if (self.current_token.token_type != .IDENTIFIER) try self.errorHandler(error.ExpectedIdentifierError);
@@ -118,8 +118,19 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !*ASTNode {
                 exp.* = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = value } } };
             },
             .NUMBER => {
-                const value = try self.parseNumberLiteral();
-                exp.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
+                const value = try self.parseNumOrBinaryOp(0);
+                exp = value;
+
+                const node = try self.allocator.create(ASTNode);
+                node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{
+                    .name = name,
+                    .expression = exp,
+                    .mutable = isMutable,
+                } } };
+
+                std.debug.print("{s}! Mutable: {}\n", .{ name, isMutable });
+
+                return node;
             },
             else => try self.errorHandler(error.UnknowTokenError),
         }
@@ -162,8 +173,8 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !*ASTNode {
                 exp.* = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = value } } };
             },
             .NUMBER => {
-                const value = try self.parseNumberLiteral();
-                exp.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
+                const value = try self.parseNumOrBinaryOp(0);
+                exp.* = value.*;
             },
             else => try self.errorHandler(error.UnknowTokenError),
         }
@@ -212,8 +223,8 @@ pub fn parseAssignment(self: *Parser) !*ASTNode {
             exp.* = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = value } } };
         },
         .NUMBER => {
-            const value = try self.parseNumberLiteral();
-            exp.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
+            const value = try self.parseNumOrBinaryOp(0);
+            exp.* = value.*;
         },
         else => try self.errorHandler(error.UnexpectedTokenError),
     }
@@ -360,10 +371,145 @@ pub fn parseFunctionBody(self: *Parser) ![]*ASTNode {
     return body.items;
 }
 
-pub fn parseNumberLiteral(self: *Parser) !i64 {
-    const value = try std.fmt.parseInt(i64, self.current_token.lexeme, 10);
-    return value;
+pub fn parseNumOrBinaryOp(self: *Parser, min_bp: u8) !*ASTNode {
+    const allocator = self.allocator;
+
+    // Create left node for number literal
+    const left = try allocator.create(ASTNode);
+    const valueLex = self.current_token.lexeme;
+    const value = try std.fmt.parseInt(i64, valueLex, 10);
+    left.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
+    try self.advance();
+
+    while (true) {
+        if (self.current_token.token_type == .PUNCTUATION) {
+            // Assuming punctuation token stores specific punctuation type in 'punctuation' field
+            if (self.current_token.token_type.PUNCTUATION == .semi_colon) {
+                try self.advance();
+                break; // End expression on semicolon
+            }
+        }
+
+        if (self.current_token.token_type != .OPERATOR) {
+            break; // No more operator, return left expression
+        }
+
+        const op = self.current_token.token_type.OPERATOR;
+
+        // Define left and right binding powers based on operator precedence
+        const an = struct { lbp: u8, rbp: u8 };
+        const binding: ?an = switch (op) {
+            .plus, .minus => .{ .lbp = 10, .rbp = 11 },
+            .times, .divideBy => .{ .lbp = 20, .rbp = 21 },
+            else => null,
+        };
+        if (binding == null or binding.?.lbp < min_bp) {
+            break;
+        }
+
+        try self.advance();
+
+        // Parse right-hand side expression with right binding power
+        const rhs = try self.parseNumOrBinaryOp(binding.?.rbp);
+
+        // Build new binary operation node with left and right subtree
+        const binOp = try allocator.create(ASTNode);
+        binOp.* = .{ .kind = .BinaryOperation, .data = .{ .BinaryOperation = .{
+            .left = left,
+            .operator = switch (op) {
+                .plus => '+',
+                .minus => '-',
+                .times => '*',
+                .divideBy => '/',
+                else => return error.SomeError,
+            },
+            .right = rhs,
+        } } };
+
+        // Assign new combined node to left for further chaining
+        left.* = binOp.*;
+    }
+
+    return left;
 }
+//
+// pub fn parseNumberLiteral(self: *Parser) !i64 {
+//     const value = try std.fmt.parseInt(i64, self.current_token.lexeme, 10);
+//     return value;
+// }
+//
+// pub fn parseNumOrBinaryOp(self: *Parser, min_bp: u8) !*ASTNode {
+//     const left = try self.allocator.create(ASTNode);
+//
+//     const valueLex = self.current_token.lexeme;
+//     const value = try std.fmt.parseInt(i64, valueLex, 10);
+//     left.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
+//
+//     try self.advance();
+//
+//     if (self.current_token.token_type == .PUNCTUATION) {
+//         if (self.current_token.token_type.PUNCTUATION == .semi_colon) {
+//             try self.advance();
+//             return left;
+//         }
+//     }
+//
+//     if (self.current_token.token_type == .OPERATOR) {
+//         const something = struct {
+//             lbp: u8,
+//             rbp: u8,
+//         };
+//         while (true) {
+//             const an: ?something = switch (self.current_token.token_type.OPERATOR) {
+//                 .plus, .minus => .{ .lbp = 10, .rbp = 11 },
+//                 .times, .divideBy => .{ .lbp = 20, .rbp = 21 },
+//                 else => null,
+//             };
+//
+//             if (an == null or an.?.lbp < min_bp) break;
+//
+//             try self.advance();
+//
+//             const rhs = try self.parseNumOrBinaryOp(an.?.rbp);
+//
+//             switch (self.current_token.token_type) {
+//                 .OPERATOR => |op| {
+//                     switch (op) {
+//                         .plus => {
+//                             left.* = .{ .kind = .BinaryOperation, .data = .{ .BinaryOperation = .{ .left = left, .operator = '+', .right = rhs } } };
+//                             break;
+//                         },
+//
+//                         .minus => {
+//                             left.* = .{ .kind = .BinaryOperation, .data = .{ .BinaryOperation = .{ .left = left, .operator = '-', .right = rhs } } };
+//                             break;
+//                         },
+//
+//                         .times => {
+//                             left.* = .{ .kind = .BinaryOperation, .data = .{ .BinaryOperation = .{ .left = left, .operator = '*', .right = rhs } } };
+//                             break;
+//                         },
+//
+//                         .divideBy => {
+//                             left.* = .{ .kind = .BinaryOperation, .data = .{ .BinaryOperation = .{ .left = left, .operator = '/', .right = rhs } } };
+//                             break;
+//                         },
+//                         else => return error.SomeError,
+//                     }
+//                 },
+//                 else => {},
+//                 // else => {
+//                 //     std.debug.print("Expected token type operator, got {s} typeof {}\n", .{ self.current_token.lexeme, self.current_token.token_type });
+//                 //     return error.UnexpectedTokenError;
+//                 // },
+//             }
+//         }
+//     } else {
+//         std.debug.print("Expected token type operator, got {s} typeof {}\n", .{ self.current_token.lexeme, self.current_token.token_type });
+//         return error.UnexpectedTokenError;
+//     }
+//     return left;
+// }
 
 pub fn semiAndGo(self: *Parser) !void {
     if (self.current_token.token_type != .PUNCTUATION) try self.errorHandler(error.ExpectedPuntuactionError);
@@ -387,9 +533,8 @@ pub fn parseReturn(self: *Parser) !*ASTNode {
             exp.* = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = value } } };
         },
         .NUMBER => {
-            const value = try self.parseNumberLiteral();
-            std.debug.print("returning {}...\n", .{value});
-            exp.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
+            const value = try self.parseNumOrBinaryOp(0);
+            exp.* = value.*;
         },
         else => try self.errorHandler(error.UnexpectedTokenError),
     }
