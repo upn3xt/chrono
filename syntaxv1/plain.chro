@@ -1,2 +1,2 @@
-var y = "string";
+const y = "string";
 y = "string";

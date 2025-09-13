@@ -1,35 +1,12 @@
 const std = @import("std");
 const Import = @import("../imports.zig");
 
+const Type = Import.Analyzer.Type;
 const ASTNode = Import.ASTNode;
 
-const Analyzer = @This();
+const IndieAnalyzer = @This();
 
-nodes: []*ASTNode,
-symbols: std.StringHashMap(Type),
-
-pub const Type = enum { Int, Float, String, Bool, Char };
-
-pub fn init(nodes: []*ASTNode, symbols: std.StringHashMap(Type)) Analyzer {
-    return Analyzer{ .nodes = nodes, .symbols = symbols };
-}
-
-pub fn analyzer(self: *Analyzer) !void {
-    var index: usize = 0;
-    while (true) : (index += 1) {
-        if (index == self.nodes.len) break;
-        const node = self.nodes[index];
-        switch (node.kind) {
-            .VariableDeclaration => {
-                try self.analyzeVariableDeclaration(node);
-            },
-            .Assignment => try self.analyzeAssignment(node),
-            else => return error.SomeError,
-        }
-    }
-}
-
-pub fn analyzeVariableDeclaration(self: *Analyzer, node: *ASTNode) !void {
+pub fn analyzeVariableDeclaration(symbols: *std.StringHashMap(Type), node: *ASTNode) !void {
     const name = node.data.VariableDeclaration.name;
 
     const exp = node.data.VariableDeclaration.expression;
@@ -55,19 +32,19 @@ pub fn analyzeVariableDeclaration(self: *Analyzer, node: *ASTNode) !void {
         else => return error.InvalidType,
     }
 
-    if (self.symbols.get(name)) |_| {
+    if (symbols.get(name)) |_| {
         std.debug.print("Variable already declared.\n", .{});
         return error.RedeclarationError;
     }
 
-    try self.symbols.put(name, exp_type);
+    try symbols.put(name, exp_type);
 
     if (var_type == null) {
         node.data.VariableDeclaration.var_type = exp_type;
     } else if (var_type.? != exp_type) return error.TypeMismatch;
 }
 
-pub fn analyzeAssignment(self: *Analyzer, node: *ASTNode) !void {
+pub fn analyzeAssignment(symbols: *std.StringHashMap(Type), node: *ASTNode) !void {
     const asg_type = node.data.Assignment.asg_type;
     const variable = node.data.Assignment.variable;
 
@@ -75,7 +52,7 @@ pub fn analyzeAssignment(self: *Analyzer, node: *ASTNode) !void {
         .VariableReference => variable.*.data.VariableReference,
         else => unreachable,
     };
-    if (self.symbols.get(varvar.name)) |var_type| {
+    if (symbols.get(varvar.name)) |var_type| {
         if (varvar.mutable == true) {
             if (var_type != asg_type) {
                 std.debug.print("Type TypeMismatch!\n", .{});

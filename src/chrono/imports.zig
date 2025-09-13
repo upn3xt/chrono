@@ -6,3 +6,4 @@ pub const Parser2 = @import("../chrono/parser/parser2.zig");
 pub const Analyzer = @import("../chrono/analyzer/analyzer.zig");
 pub const Codegen = @import("../chrono/codegen/codegener.zig");
 pub const Printer = @import("../chrono/printer/printer.zig");
+pub const IndieAnalyzer = @import("../chrono/analyzer/indieanalyzer.zig");

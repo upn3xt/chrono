@@ -4,6 +4,7 @@ const Import = @import("../imports.zig");
 const Token = Import.Token;
 const ASTNode = Import.ASTNode;
 const Type = Import.Analyzer.Type;
+const IndieAnalyzer = Import.IndieAnalyzer;
 
 const ExpectedTokenError = error{
     ExpectedIdentifierError,
@@ -23,9 +24,11 @@ allocator: std.mem.Allocator,
 tokens: []Token,
 index: usize = 0,
 current_token: Token,
+symbols: std.StringHashMap(Type),
+analyzer: IndieAnalyzer,
 
-pub fn init(allocator: std.mem.Allocator, tokens: []Token) Parser {
-    return Parser{ .allocator = allocator, .tokens = tokens, .index = 0, .current_token = tokens[0] };
+pub fn init(allocator: std.mem.Allocator, tokens: []Token, symbols: std.StringHashMap(Type)) Parser {
+    return Parser{ .allocator = allocator, .tokens = tokens, .index = 0, .current_token = tokens[0], .symbols = symbols.init(allocator) };
 }
 
 pub fn advance(self: *Parser) !void {
@@ -73,6 +76,7 @@ pub fn ParseTokens(self: *Parser) ![]*ASTNode {
                         var isMutable = false;
                         if (key == .var_kw) isMutable = true;
                         const var_node = try self.parseVariableDeclaration(isMutable);
+                        try self.analyzer.analyzeVariableDeclaration(&self.symbols, var_node);
                         try node_list.append(var_node);
                     },
                     .function_kw => {
