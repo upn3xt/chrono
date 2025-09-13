@@ -3,6 +3,7 @@ const std = @import("std");
 const Import = @import("../imports.zig");
 const Token = Import.Token;
 const ASTNode = Import.ASTNode;
+const Type = Import.Analyzer.Type;
 
 const ExpectedTokenError = error{
     ExpectedIdentifierError,
@@ -200,6 +201,7 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !*ASTNode {
 }
 
 pub fn parseAssignment(self: *Parser) !*ASTNode {
+    var asgtype: Type = undefined;
     const exp = try self.allocator.create(ASTNode);
 
     if (self.current_token.token_type != .IDENTIFIER) try self.errorHandler(error.ExpectedIdentifierError);
@@ -217,15 +219,27 @@ pub fn parseAssignment(self: *Parser) !*ASTNode {
     switch (self.current_token.token_type) {
         .STRING => {
             const value = self.current_token.lexeme;
-            exp.* = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{ .value = value } } };
+            exp.* = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{
+                .value = value,
+            } } };
+            asgtype = .String;
         },
         .CHAR => {
             const value = self.current_token.lexeme[0];
             exp.* = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = value } } };
+            asgtype = .Char;
         },
         .NUMBER => {
             const value = try self.parseNumber(0);
             exp.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
+            asgtype = .Int;
+
+            const node = try self.allocator.create(ASTNode);
+            node.* = .{ .kind = .Assignment, .data = .{ .Assignment = .{ .variable = var_node, .expression = exp, .asg_type = asgtype } } };
+
+            std.debug.print("{s} mutated!\n", .{name});
+
+            return node;
         },
         else => try self.errorHandler(error.UnexpectedTokenError),
     }
@@ -235,7 +249,7 @@ pub fn parseAssignment(self: *Parser) !*ASTNode {
     try self.semiAndGo();
 
     const node = try self.allocator.create(ASTNode);
-    node.* = .{ .kind = .Assignment, .data = .{ .Assignment = .{ .variable = var_node, .expression = exp } } };
+    node.* = .{ .kind = .Assignment, .data = .{ .Assignment = .{ .variable = var_node, .expression = exp, .asg_type = asgtype } } };
 
     std.debug.print("{s} mutated!\n", .{name});
 
@@ -379,29 +393,24 @@ pub fn parseNumber(self: *Parser, min_bp: u8) !i64 {
 
     while (true) {
         if (self.current_token.token_type == .PUNCTUATION) {
-            // Assuming punctuation token stores specific punctuation type in 'punctuation' field
             if (self.current_token.token_type.PUNCTUATION == .semi_colon) {
                 try self.advance();
-                break; // End expression on semicolon
+                break;
             }
         }
 
-        if (self.current_token.token_type != .OPERATOR) {
-            break; // No more operator, return left expression
-        }
+        if (self.current_token.token_type != .OPERATOR) break;
 
         const op = self.current_token.token_type.OPERATOR;
 
-        // Define left and right binding powers based on operator precedence
-        const an = struct { lbp: u8, rbp: u8 };
+        const an = struct { lbp: u8, rbp: u8 }; // anonym struct
         const binding: ?an = switch (op) {
             .plus, .minus => .{ .lbp = 10, .rbp = 11 },
             .times, .divideBy => .{ .lbp = 20, .rbp = 21 },
             else => null,
         };
-        if (binding == null or binding.?.lbp < min_bp) {
-            break;
-        }
+
+        if (binding == null or binding.?.lbp < min_bp) break;
 
         try self.advance();
 

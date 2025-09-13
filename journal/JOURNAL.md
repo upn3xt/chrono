@@ -214,3 +214,15 @@ Rn I need to make the binary operation thing. But the thing is, im scared. I gue
 is worth it. It is. Just stalling for as long as I can...
 
 Planning in remaking the parser again with helper functions, proper error handling(fr this time) and some extra properties like current token to avoid repetition.
+
+
+## It's OK to ask for help.
+
+Binary operations are a thing now, and they're solved at compile time! To be precise, at parse time! AI helped with the suggestion of Pratt's parser, gave 
+examples and I simply adapted to my parser context, not thinking too much. Also, the parser arc is ending and the analyzer is now the thing that I'm working 
+on, now here's where the actual logic of the code is being analyzed. Type mismatches, undefined variables and more are being caught in it. Is a more lightweight
+task that the parser, since I'm just walking through nodes and making sure that everything matches.
+
+Each day it passes, more progress is being made, little by little, and sometimes even big pushes. I'm becoming more and more proud of it too.
+
+

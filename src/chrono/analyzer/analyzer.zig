@@ -23,7 +23,7 @@ pub fn analyzer(self: *Analyzer) !void {
             .VariableDeclaration => {
                 try self.analyzeVariableDeclaration(node);
             },
-            .Assignment => {},
+            .Assignment => try self.analyzeAssignment(node),
             else => return error.SomeError,
         }
     }
@@ -52,9 +52,6 @@ pub fn analyzeVariableDeclaration(self: *Analyzer, node: *ASTNode) !void {
         .CharLiteral => {
             exp_type = .Char;
         },
-        .BinaryOperation => {
-            //TODO: WORK HERE
-        },
         else => return error.InvalidType,
     }
 
@@ -67,5 +64,31 @@ pub fn analyzeVariableDeclaration(self: *Analyzer, node: *ASTNode) !void {
 
     if (var_type == null) {
         node.data.VariableDeclaration.var_type = exp_type;
-    } else if (var_type.? != exp_type) return error.SomeError;
+    } else if (var_type.? != exp_type) return error.TypeMismatch;
+}
+
+pub fn analyzeAssignment(self: *Analyzer, node: *ASTNode) !void {
+    const asg_type = node.data.Assignment.asg_type;
+    // const exp = node.data.Assignment.expression;
+    const variable = node.data.Assignment.variable;
+
+    const varvar = switch (variable.kind) {
+        .VariableReference => variable.*.data.VariableReference,
+        else => unreachable,
+    };
+    if (self.symbols.get(varvar.name)) |var_type| {
+        if (varvar.mutable == true) {
+            if (var_type != asg_type) {
+                std.debug.print("Type TypeMismatch!\n", .{});
+                return error.TypeMismatchError;
+            }
+        } else {
+            std.debug.print("{}\n", .{varvar.mutable});
+            std.debug.print("Error, trying to asign value to a constant: {s}\n", .{varvar.name});
+            return error.AssignToConstantError;
+        }
+    } else {
+        std.debug.print("Variable {s} doesnt exist!\n", .{varvar.name});
+        return error.UndefinedVariable;
+    }
 }

@@ -12,7 +12,7 @@ data: union(NodeKind) {
         name: []const u8,
         var_type: ?Type = null,
         expression: ?*ASTNode,
-        mutable: bool = false,
+        mutable: bool,
     },
 
     VariableReference: struct { name: []const u8, mutable: bool = false },
@@ -33,7 +33,7 @@ data: union(NodeKind) {
 
     Assignment: struct {
         variable: *ASTNode,
-        asg_type: ?[]const u8 = null,
+        asg_type: ?Type = null,
         expression: *ASTNode,
     },
 
