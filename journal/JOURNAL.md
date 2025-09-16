@@ -225,4 +225,6 @@ task that the parser, since I'm just walking through nodes and making sure that 
 
 Each day it passes, more progress is being made, little by little, and sometimes even big pushes. I'm becoming more and more proud of it too.
 
+## Back at it!
 
+Making a independent analyzer to work with the parser. Since some steps depend on it and helps catch errors earlier in the program.

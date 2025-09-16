@@ -2,7 +2,7 @@ const Import = @import("../imports.zig");
 
 const Analyzer = Import.Analyzer;
 
-const Type = Analyzer.Type;
+const Type = Import.Types.Types;
 
 const ASTNode = @This();
 

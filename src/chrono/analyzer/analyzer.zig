@@ -2,15 +2,16 @@ const std = @import("std");
 const Import = @import("../imports.zig");
 
 const ASTNode = Import.ASTNode;
+const Object = Import.Object;
 
 const Analyzer = @This();
 
 nodes: []*ASTNode,
-symbols: std.StringHashMap(Type),
+symbols: std.StringHashMap(Object),
 
 pub const Type = enum { Int, Float, String, Bool, Char };
 
-pub fn init(nodes: []*ASTNode, symbols: std.StringHashMap(Type)) Analyzer {
+pub fn init(nodes: []*ASTNode, symbols: std.StringHashMap(Object)) Analyzer {
     return Analyzer{ .nodes = nodes, .symbols = symbols };
 }
 

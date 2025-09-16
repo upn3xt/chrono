@@ -3,8 +3,9 @@ const std = @import("std");
 const Import = @import("../imports.zig");
 const Token = Import.Token;
 const ASTNode = Import.ASTNode;
-const Type = Import.Analyzer.Type;
+const Type = Import.Types.Types;
 const IndieAnalyzer = Import.IndieAnalyzer;
+const Object = Import.Object;
 
 const ExpectedTokenError = error{
     ExpectedIdentifierError,
@@ -24,11 +25,10 @@ allocator: std.mem.Allocator,
 tokens: []Token,
 index: usize = 0,
 current_token: Token,
-symbols: std.StringHashMap(Type),
 analyzer: IndieAnalyzer,
 
-pub fn init(allocator: std.mem.Allocator, tokens: []Token, symbols: std.StringHashMap(Type)) Parser {
-    return Parser{ .allocator = allocator, .tokens = tokens, .index = 0, .current_token = tokens[0], .symbols = symbols.init(allocator) };
+pub fn init(allocator: std.mem.Allocator, tokens: []Token, symbols: std.StringHashMap(Object)) Parser {
+    return Parser{ .allocator = allocator, .tokens = tokens, .index = 0, .current_token = tokens[0], .analyzer = .init(symbols) };
 }
 
 pub fn advance(self: *Parser) !void {
@@ -76,7 +76,7 @@ pub fn ParseTokens(self: *Parser) ![]*ASTNode {
                         var isMutable = false;
                         if (key == .var_kw) isMutable = true;
                         const var_node = try self.parseVariableDeclaration(isMutable);
-                        try self.analyzer.analyzeVariableDeclaration(&self.symbols, var_node);
+                        try self.analyzer.analyzeVariableDeclaration(var_node);
                         try node_list.append(var_node);
                     },
                     .function_kw => {
@@ -89,6 +89,7 @@ pub fn ParseTokens(self: *Parser) ![]*ASTNode {
             },
             .IDENTIFIER => {
                 const id_node = try self.parseAssignment();
+                try self.analyzer.analyzeAssignment(id_node);
                 try node_list.append(id_node);
             },
             .COMMENT => try self.advance(),
@@ -211,7 +212,11 @@ pub fn parseAssignment(self: *Parser) !*ASTNode {
     if (self.current_token.token_type != .IDENTIFIER) try self.errorHandler(error.ExpectedIdentifierError);
     const name = self.current_token.lexeme;
     const var_node = try self.allocator.create(ASTNode);
-    var_node.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = name } } };
+    if (self.analyzer.symbols.get(name)) |ob| {
+        if (ob.mutable != null) {
+            var_node.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = name, .mutable = ob.mutable.? } } };
+        }
+    }
 
     try self.advance();
 

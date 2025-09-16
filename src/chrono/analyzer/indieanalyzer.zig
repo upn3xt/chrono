@@ -1,17 +1,26 @@
 const std = @import("std");
 const Import = @import("../imports.zig");
 
-const Type = Import.Analyzer.Type;
+const Type = Import.Types.Types;
 const ASTNode = Import.ASTNode;
+const Object = Import.Object;
 
 const IndieAnalyzer = @This();
 
-pub fn analyzeVariableDeclaration(symbols: *std.StringHashMap(Type), node: *ASTNode) !void {
+symbols: std.StringHashMap(Object),
+
+pub fn init(symbols: std.StringHashMap(Object)) IndieAnalyzer {
+    return IndieAnalyzer{ .symbols = symbols };
+}
+
+pub fn analyzeVariableDeclaration(self: *IndieAnalyzer, node: *ASTNode) !void {
     const name = node.data.VariableDeclaration.name;
 
     const exp = node.data.VariableDeclaration.expression;
 
     const var_type = node.data.VariableDeclaration.var_type;
+
+    const mutable = node.data.VariableDeclaration.mutable;
 
     var exp_type: Type = undefined;
 
@@ -32,19 +41,19 @@ pub fn analyzeVariableDeclaration(symbols: *std.StringHashMap(Type), node: *ASTN
         else => return error.InvalidType,
     }
 
-    if (symbols.get(name)) |_| {
+    if (self.symbols.get(name)) |_| {
         std.debug.print("Variable already declared.\n", .{});
         return error.RedeclarationError;
     }
 
-    try symbols.put(name, exp_type);
-
     if (var_type == null) {
         node.data.VariableDeclaration.var_type = exp_type;
     } else if (var_type.? != exp_type) return error.TypeMismatch;
+
+    try self.symbols.put(name, .{ .identifier = name, .mutable = mutable, .obtype = exp_type });
 }
 
-pub fn analyzeAssignment(symbols: *std.StringHashMap(Type), node: *ASTNode) !void {
+pub fn analyzeAssignment(self: *IndieAnalyzer, node: *ASTNode) !void {
     const asg_type = node.data.Assignment.asg_type;
     const variable = node.data.Assignment.variable;
 
@@ -52,9 +61,9 @@ pub fn analyzeAssignment(symbols: *std.StringHashMap(Type), node: *ASTNode) !voi
         .VariableReference => variable.*.data.VariableReference,
         else => unreachable,
     };
-    if (symbols.get(varvar.name)) |var_type| {
-        if (varvar.mutable == true) {
-            if (var_type != asg_type) {
+    if (self.symbols.get(varvar.name)) |ob| {
+        if (ob.mutable == true) {
+            if (ob.obtype != asg_type) {
                 std.debug.print("Type TypeMismatch!\n", .{});
                 return error.TypeMismatchError;
             }

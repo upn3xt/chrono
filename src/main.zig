@@ -6,6 +6,7 @@ const Lexer = Import.Lexer;
 const Parser = Import.Parser2;
 const ASTNode = Import.ASTNode;
 const Analyzer = Import.Analyzer;
+const Object = Import.Object;
 const Printer = Import.Printer;
 
 pub fn main() !void {
@@ -30,16 +31,16 @@ pub fn main() !void {
 
     // Printer.printTokens(tokens);
 
-    var parser = Parser.init(allocator, tokens);
+    const sym = std.StringHashMap(Object).init(allocator);
+
+    var parser = Parser.init(allocator, tokens, sym);
     const nodes = try parser.ParseTokens();
 
     // Printer.printAST(nodes);
 
     std.debug.print("Nodes has length of {}\n", .{nodes.len});
 
-    const sym = std.StringHashMap(Analyzer.Type).init(allocator);
-
-    var analyzer = Analyzer.init(nodes, sym);
-
-    try analyzer.analyzer();
+    // var analyzer = Analyzer.init(nodes, sym);
+    //
+    // try analyzer.analyzer();
 }
