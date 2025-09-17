@@ -81,6 +81,7 @@ pub fn ParseTokens(self: *Parser) ![]ASTNode {
                     },
                     .function_kw => {
                         const fn_node = try self.parseFunctionDeclaration();
+                        try self.analyzer.analyzeFunctionDeclaration(fn_node);
                         try node_list.append(fn_node);
                     },
                     .pub_kw => try self.advance(),
@@ -128,8 +129,7 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !ASTNode {
                 std.debug.print("Result: {}\n", .{value});
                 exp.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
 
-                const node = try self.allocator.create(ASTNode);
-                node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{
+                const node: ASTNode = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{
                     .name = name,
                     .expression = exp,
                     .mutable = isMutable,
@@ -137,7 +137,7 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !ASTNode {
 
                 std.debug.print("{s}! Mutable: {}\n", .{ name, isMutable });
 
-                return node.*;
+                return node;
             },
             else => try self.errorHandler(error.UnknowTokenError),
         }
@@ -146,8 +146,7 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !ASTNode {
 
         try self.semiAndGo();
 
-        const node = try self.allocator.create(ASTNode);
-        node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{
+        const node: ASTNode = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{
             .name = name,
             .expression = exp,
             .mutable = isMutable,
@@ -155,7 +154,7 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !ASTNode {
 
         std.debug.print("{s}! Mutable: {}\n", .{ name, isMutable });
 
-        return node.*;
+        return node;
     }
     if (self.current_token.token_type == .PUNCTUATION) {
         if (self.current_token.token_type.PUNCTUATION != .colon) try self.errorHandler(error.ExpectedPuntuactionColon);
@@ -190,15 +189,14 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !ASTNode {
 
         try self.semiAndGo();
 
-        const node = try self.allocator.create(ASTNode);
-        node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{
+        const node: ASTNode = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{
             .name = name,
             .expression = exp,
             .mutable = isMutable,
         } } };
 
         std.debug.print("{s}! Mutable: {}\n", .{ name, isMutable });
-        return node.*;
+        return node;
     } else {
         try self.errorHandler(error.UnexpectedTokenError);
     }
@@ -256,16 +254,15 @@ pub fn parseAssignment(self: *Parser) !ASTNode {
 
     try self.semiAndGo();
 
-    const node = try self.allocator.create(ASTNode);
-    node.* = .{ .kind = .Assignment, .data = .{ .Assignment = .{ .variable = var_node, .expression = exp, .asg_type = asgtype } } };
+    const node: ASTNode = .{ .kind = .Assignment, .data = .{ .Assignment = .{ .variable = var_node, .expression = exp, .asg_type = asgtype } } };
 
     std.debug.print("{s} mutated!\n", .{name});
 
-    return node.*;
+    return node;
 }
 
 pub fn parseFunctionDeclaration(self: *Parser) !ASTNode {
-    const node = try self.allocator.create(ASTNode);
+    var node: ASTNode = undefined;
     try self.advance();
 
     if (self.current_token.token_type != .IDENTIFIER) try self.errorHandler(error.ExpectedIdentifierError);
@@ -294,7 +291,7 @@ pub fn parseFunctionDeclaration(self: *Parser) !ASTNode {
         try self.advance();
 
         if (self.current_token.token_type != .IDENTIFIER) return error.ExpectedIdentifier;
-        const par_type = self.tokens[self.index].lexeme;
+        const par_type = self.h_getType(self.tokens[self.index].lexeme) orelse return error.InvalidTypeError;
 
         const parameter = try self.allocator.create(ASTNode);
         parameter.* = .{ .kind = .Parameter, .data = .{ .Parameter = .{ .name = name, .par_type = par_type } } };
@@ -313,7 +310,7 @@ pub fn parseFunctionDeclaration(self: *Parser) !ASTNode {
 
     try self.advance();
 
-    const ret_type = self.current_token.lexeme;
+    const ret_type = self.h_getType(self.current_token.lexeme) orelse return error.InvalidTypeError;
 
     try self.advance();
 
@@ -335,7 +332,7 @@ pub fn parseFunctionDeclaration(self: *Parser) !ASTNode {
     self.index = start_pos;
     const body = try self.parseFunctionBody();
 
-    node.* = .{ .kind = .FunctionDeclaration, .data = .{ .FunctionDeclaration = .{
+    node = .{ .kind = .FunctionDeclaration, .data = .{ .FunctionDeclaration = .{
         .name = fn_name,
         .fn_type = ret_type,
         .parameters = parameters.items,
@@ -348,13 +345,13 @@ pub fn parseFunctionDeclaration(self: *Parser) !ASTNode {
 
     std.debug.print("fn {s} defined!\n", .{fn_name});
 
-    return node.*;
+    return node;
 }
 
 pub fn parseFunctionCall(self: *Parser) !ASTNode {
-    const node = try self.allocator.create(ASTNode);
+    const node: ASTNode = undefined;
     try self.advance();
-    return node.*;
+    return node;
 }
 
 pub fn parseFunctionBody(self: *Parser) ![]ASTNode {
@@ -373,6 +370,7 @@ pub fn parseFunctionBody(self: *Parser) ![]ASTNode {
                     .return_kw => {
                         const ret_node = try self.parseReturn();
                         try body.append(ret_node);
+                        break;
                     },
                     else => break,
                 }
@@ -443,23 +441,23 @@ pub fn semiAndGo(self: *Parser) !void {
 }
 
 pub fn parseReturn(self: *Parser) !ASTNode {
-    const exp = try self.allocator.create(ASTNode);
+    var exp: ASTNode = undefined;
     try self.advance();
 
     switch (self.current_token.token_type) {
         .STRING => {
             const value = self.current_token.lexeme;
             std.debug.print("returning {s}...\n", .{value});
-            exp.* = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{ .value = value } } };
+            exp = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{ .value = value } } };
         },
         .CHAR => {
             const value = self.current_token.lexeme[0];
             std.debug.print("returning {c}...\n", .{value});
-            exp.* = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = value } } };
+            exp = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = value } } };
         },
         .NUMBER => {
             const value = try self.parseNumber(0);
-            exp.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
+            exp = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
         },
         else => try self.errorHandler(error.UnexpectedTokenError),
     }
@@ -467,5 +465,13 @@ pub fn parseReturn(self: *Parser) !ASTNode {
     try self.semiAndGo();
 
     try self.advance();
-    return exp.*;
+    return exp;
+}
+
+pub fn h_getType(_: *Parser, elem: []const u8) ?Type {
+    if (elem[0] == 'i') return Type.Int;
+    if (elem[0] == 'u') return Type.Char;
+    if (std.mem.eql(u8, "string", elem)) return Type.String;
+    if (std.mem.eql(u8, "void", elem)) return Type.Void;
+    return null;
 }

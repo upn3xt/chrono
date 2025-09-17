@@ -1,2 +1,11 @@
-var y = "string";
-y = "string";
+pub fn main() void {
+    const x = return3();
+}
+
+fn return3() int {
+    return 1 + 2;
+}
+
+fn test(x: int, y: int) void {
+  return 1; 
+}
