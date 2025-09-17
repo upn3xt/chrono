@@ -74,49 +74,54 @@ pub fn analyzeAssignment(self: *IndieAnalyzer, node: ASTNode) !void {
 }
 
 pub fn analyzeFunctionDeclaration(self: *IndieAnalyzer, node: ASTNode) !void {
-    const name = node.data.FunctionDeclaration.name;
+    switch (node.kind) {
+        .FunctionDeclaration => {
+            const name = node.data.FunctionDeclaration.name;
 
-    const body = node.data.FunctionDeclaration.body;
+            const body = node.data.FunctionDeclaration.body;
 
-    const fn_type = node.data.FunctionDeclaration.fn_type;
+            const fn_type = node.data.FunctionDeclaration.fn_type;
 
-    const params = node.data.FunctionDeclaration.parameters;
+            const params = node.data.FunctionDeclaration.parameters;
 
-    const value = node.data.FunctionDeclaration.value;
+            const value = node.data.FunctionDeclaration.value;
 
-    if (self.symbols.get(name)) |_| {
-        return error.FunctionRedeclarationError;
-    }
-
-    for (body) |b| {
-        switch (b.kind) {
-            .VariableDeclaration => {
-                try self.analyzeFunctionDeclaration(b);
-            },
-            .Assignment => {
-                try self.analyzeAssignment(b);
-            },
-            else => unreachable,
-        }
-    }
-
-    if (fn_type == .Void and value != null) {
-        return error.FunctionReturnsWithVoidTypeError;
-    }
-
-    var parameters_syms = std.StringHashMap(Object).init(std.heap.page_allocator);
-    if (params) |pams| {
-        for (pams) |p| {
-            switch (p.kind) {
-                .Parameter => {
-                    if (p.data.Parameter.par_type == .Void) return error.InvalidParameterType;
-                    if (parameters_syms.get(p.data.Parameter.name)) |_| {
-                        return error.RedeclarationOfParameterError;
-                    }
-                    try parameters_syms.put(p.data.Parameter.name, .{ .identifier = p.data.Parameter.name, .mutable = true, .obtype = p.data.Parameter.par_type });
-                },
-                else => unreachable,
+            if (self.symbols.get(name)) |_| {
+                return error.FunctionRedeclarationError;
             }
-        }
+
+            for (body) |b| {
+                switch (b.kind) {
+                    .VariableDeclaration => {
+                        try self.analyzeFunctionDeclaration(b);
+                    },
+                    .Assignment => {
+                        try self.analyzeAssignment(b);
+                    },
+                    else => unreachable,
+                }
+            }
+
+            if (fn_type == .Void and value != null) {
+                return error.FunctionReturnsWithVoidTypeError;
+            }
+
+            var parameters_syms = std.StringHashMap(Object).init(std.heap.page_allocator);
+            if (params) |pams| {
+                for (pams) |p| {
+                    switch (p.kind) {
+                        .Parameter => {
+                            if (p.data.Parameter.par_type == .Void) return error.InvalidParameterType;
+                            if (parameters_syms.get(p.data.Parameter.name)) |_| {
+                                return error.RedeclarationOfParameterError;
+                            }
+                            try parameters_syms.put(p.data.Parameter.name, .{ .identifier = p.data.Parameter.name, .mutable = true, .obtype = p.data.Parameter.par_type });
+                        },
+                        else => unreachable,
+                    }
+                }
+            }
+        },
+        else => unreachable,
     }
 }

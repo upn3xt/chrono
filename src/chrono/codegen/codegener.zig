@@ -1,4 +1,6 @@
 const Codegener = @This();
+const Import = @import("../imports.zig");
+const ASTNode = Import.ASTNode;
 const std = @import("std");
 const llvm = @cImport({
     @cInclude("llvm-c/Core.h");
@@ -78,26 +80,59 @@ pub fn emitObjectFile(
     llvm.LLVMDisposeTargetData(data_layout_ref);
     llvm.LLVMDisposeTargetMachine(target_machine);
 }
-pub fn createMainWithVariable(module: llvm.LLVMModuleRef, context: llvm.LLVMContextRef) void {
-    const i32_type = llvm.LLVMInt32TypeInContext(context);
-    const func_type = llvm.LLVMFunctionType(i32_type, null, 0, 0);
-    const main_func = llvm.LLVMAddFunction(module, "main", func_type);
-    llvm.LLVMSetFunctionCallConv(main_func, llvm.LLVMCCallConv);
+pub fn createMainWithVariable(module: llvm.LLVMModuleRef, context: llvm.LLVMContextRef, node: ASTNode) void {
+    if (node.kind == .FunctionDeclaration) {
+        const i32_type = llvm.LLVMInt32TypeInContext(context);
+        const func_type = llvm.LLVMFunctionType(i32_type, null, 0, 0);
+        const mcname = std.mem.concat(std.heap.page_allocator, u8, &[_][]const u8{ node.data.FunctionDeclaration.name, "\x00" }) catch return;
+        const main_func = llvm.LLVMAddFunction(module, mcname.ptr, func_type);
+        llvm.LLVMSetFunctionCallConv(main_func, llvm.LLVMCCallConv);
 
-    const entry_bb = llvm.LLVMAppendBasicBlock(main_func, "entry");
-    const builder = llvm.LLVMCreateBuilderInContext(context);
-    defer llvm.LLVMDisposeBuilder(builder);
+        const entry_bb = llvm.LLVMAppendBasicBlock(main_func, "entry");
+        const builder = llvm.LLVMCreateBuilderInContext(context);
+        defer llvm.LLVMDisposeBuilder(builder);
 
-    llvm.LLVMPositionBuilderAtEnd(builder, entry_bb);
+        llvm.LLVMPositionBuilderAtEnd(builder, entry_bb);
 
-    // Allocate variable 'x'
-    const var_x_ptr = llvm.LLVMBuildAlloca(builder, i32_type, "x");
+        const body = node.data.FunctionDeclaration.body;
+        const elem = body[0];
+        switch (elem.kind) {
+            .VariableDeclaration => {
+                const cname = std.mem.concat(std.heap.page_allocator, u8, &[_][]const u8{ "main", "\x00" }) catch return;
+                const variable = llvm.LLVMBuildAlloca(
+                    builder,
+                    i32_type,
+                    cname.ptr,
+                );
 
-    // Initialize 'x' to 10
-    const const_10 = llvm.LLVMConstInt(i32_type, 10, 0);
-    _ = llvm.LLVMBuildStore(builder, const_10, var_x_ptr);
-
-    // Return 0 from main
-    const ret_val = llvm.LLVMConstInt(i32_type, 0, 0);
-    _ = llvm.LLVMBuildRet(builder, ret_val);
+                const exp = elem.data.VariableDeclaration.expression orelse return;
+                const raw_value = switch (exp.kind) {
+                    .NumberLiteral => exp.data.NumberLiteral.value,
+                    else => unreachable,
+                };
+                const value = llvm.LLVMConstInt(i32_type, @intCast(raw_value), 0);
+                _ = llvm.LLVMBuildStore(builder, value, variable);
+            },
+            else => unreachable,
+        }
+        // if (elem.kind == .VariableDeclaration) {
+        //     const cname = std.mem.concat(std.heap.page_allocator, u8, &[_][]const u8{ node.data.VariableDeclaration.name, "\x00" }) catch return;
+        //     const variable = llvm.LLVMBuildAlloca(
+        //         builder,
+        //         i32_type,
+        //         cname.ptr,
+        //     );
+        //
+        //     const exp = elem.data.VariableDeclaration.expression orelse return;
+        //     const raw_value = switch (exp.kind) {
+        //         .NumberLiteral => exp.data.NumberLiteral.value,
+        //         else => unreachable,
+        //     };
+        //     const value = llvm.LLVMConstInt(i32_type, @intCast(raw_value), 0);
+        //     _ = llvm.LLVMBuildStore(builder, value, variable);
+        // }
+        // Return 0 from main
+        const ret_val = llvm.LLVMConstInt(i32_type, 0, 0);
+        _ = llvm.LLVMBuildRet(builder, ret_val);
+    } else unreachable;
 }

@@ -81,7 +81,7 @@ pub fn ParseTokens(self: *Parser) ![]ASTNode {
                     },
                     .function_kw => {
                         const fn_node = try self.parseFunctionDeclaration();
-                        try self.analyzer.analyzeFunctionDeclaration(fn_node);
+                        // try self.analyzer.analyzeFunctionDeclaration(fn_node);
                         try node_list.append(fn_node);
                     },
                     .pub_kw => try self.advance(),
@@ -107,7 +107,10 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !ASTNode {
     const exp = try self.allocator.create(ASTNode);
     try self.advance();
 
-    if (self.current_token.token_type != .IDENTIFIER) try self.errorHandler(error.ExpectedIdentifierError);
+    if (self.current_token.token_type != .IDENTIFIER) {
+        std.debug.print("Got token: {s}\t type: {}", .{ self.current_token.lexeme, self.current_token.token_type });
+        try self.errorHandler(error.ExpectedIdentifierError);
+    }
     const name = self.current_token.lexeme;
 
     try self.advance();
@@ -330,7 +333,8 @@ pub fn parseFunctionDeclaration(self: *Parser) !ASTNode {
     const fin_pos = self.index;
 
     self.index = start_pos;
-    const body = try self.parseFunctionBody();
+    const body = try self.parseFunctionBody(self.tokens[start_pos..fin_pos]);
+    self.index = fin_pos;
 
     node = .{ .kind = .FunctionDeclaration, .data = .{ .FunctionDeclaration = .{
         .name = fn_name,
@@ -338,8 +342,6 @@ pub fn parseFunctionDeclaration(self: *Parser) !ASTNode {
         .parameters = parameters.items,
         .body = body,
     } } };
-
-    self.index = fin_pos;
 
     try self.advance();
 
@@ -354,11 +356,11 @@ pub fn parseFunctionCall(self: *Parser) !ASTNode {
     return node;
 }
 
-pub fn parseFunctionBody(self: *Parser) ![]ASTNode {
+pub fn parseFunctionBody(self: *Parser, tokens: []Token) ![]ASTNode {
     var body = std.ArrayList(ASTNode).init(self.allocator);
 
-    while (true) {
-        switch (self.current_token.token_type) {
+    for (tokens) |t| {
+        switch (t.token_type) {
             .KEYWORD => |key| {
                 switch (key) {
                     .const_kw, .var_kw => {
@@ -366,13 +368,14 @@ pub fn parseFunctionBody(self: *Parser) ![]ASTNode {
                         if (key == .var_kw) isMutable = true;
                         const var_node = try self.parseVariableDeclaration(isMutable);
                         try body.append(var_node);
+                        break;
                     },
                     .return_kw => {
                         const ret_node = try self.parseReturn();
                         try body.append(ret_node);
                         break;
                     },
-                    else => break,
+                    else => {},
                 }
             },
             .IDENTIFIER => {
@@ -385,10 +388,11 @@ pub fn parseFunctionBody(self: *Parser) ![]ASTNode {
             },
             .COMMENT => try self.advance(),
             .UNKNOWN => try self.errorHandler(error.UnknowTokenError),
-            .EOF => break,
+            .EOF => return error.ReachedEOFEarly,
             else => try self.errorHandler(error.UnexpectedTokenError),
         }
     }
+    std.debug.print("Body has {} elements\n", .{body.capacity});
     return body.items;
 }
 
