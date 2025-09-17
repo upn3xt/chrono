@@ -40,7 +40,7 @@ data: union(NodeKind) {
     FunctionDeclaration: struct {
         name: []const u8,
         fn_type: []const u8,
-        body: []*ASTNode,
+        body: []ASTNode,
         parameters: ?[]*ASTNode = null,
         value: ?[]const u8 = null,
     },

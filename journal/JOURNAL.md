@@ -228,3 +228,10 @@ Each day it passes, more progress is being made, little by little, and sometimes
 ## Back at it!
 
 Making a independent analyzer to work with the parser. Since some steps depend on it and helps catch errors earlier in the program.
+
+
+## EMITION! START GENERATING REAL CODE! But just before that...
+
+Now with a minimal analyzer, I can start doing code generation! But just before that I learned that the current way I was doing the AST nodes, allocation and 
+other stuff were actually consuming. So refactoring is needed and resolving the currupted memory issue in the analyzer. THEN, I can start generating code.
+Plus, need a way to print stuff. I'll get to that in the code generation.

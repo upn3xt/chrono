@@ -64,8 +64,8 @@ pub fn errorHandler(self: *Parser, err: ParserError) ParserError!void {
     }
 }
 
-pub fn ParseTokens(self: *Parser) ![]*ASTNode {
-    var node_list = std.ArrayList(*ASTNode).init(self.allocator);
+pub fn ParseTokens(self: *Parser) ![]ASTNode {
+    var node_list = std.ArrayList(ASTNode).init(self.allocator);
     while (true) {
         if (self.index >= self.tokens.len) try self.errorHandler(error.IndexOutOfBoundsError);
 
@@ -102,7 +102,7 @@ pub fn ParseTokens(self: *Parser) ![]*ASTNode {
     return node_list.items;
 }
 
-pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !*ASTNode {
+pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !ASTNode {
     const exp = try self.allocator.create(ASTNode);
     try self.advance();
 
@@ -137,7 +137,7 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !*ASTNode {
 
                 std.debug.print("{s}! Mutable: {}\n", .{ name, isMutable });
 
-                return node;
+                return node.*;
             },
             else => try self.errorHandler(error.UnknowTokenError),
         }
@@ -155,7 +155,7 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !*ASTNode {
 
         std.debug.print("{s}! Mutable: {}\n", .{ name, isMutable });
 
-        return node;
+        return node.*;
     }
     if (self.current_token.token_type == .PUNCTUATION) {
         if (self.current_token.token_type.PUNCTUATION != .colon) try self.errorHandler(error.ExpectedPuntuactionColon);
@@ -198,14 +198,14 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !*ASTNode {
         } } };
 
         std.debug.print("{s}! Mutable: {}\n", .{ name, isMutable });
-        return node;
+        return node.*;
     } else {
         try self.errorHandler(error.UnexpectedTokenError);
     }
     return error.OperationVarDecFailed;
 }
 
-pub fn parseAssignment(self: *Parser) !*ASTNode {
+pub fn parseAssignment(self: *Parser) !ASTNode {
     var asgtype: Type = undefined;
     const exp = try self.allocator.create(ASTNode);
 
@@ -213,10 +213,9 @@ pub fn parseAssignment(self: *Parser) !*ASTNode {
     const name = self.current_token.lexeme;
     const var_node = try self.allocator.create(ASTNode);
     if (self.analyzer.symbols.get(name)) |ob| {
-        if (ob.mutable != null) {
+        if (ob.mutable != null)
             var_node.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = name, .mutable = ob.mutable.? } } };
-        }
-    }
+    } else return error.UndefinedVariableError;
 
     try self.advance();
 
@@ -248,7 +247,7 @@ pub fn parseAssignment(self: *Parser) !*ASTNode {
 
             std.debug.print("{s} mutated!\n", .{name});
 
-            return node;
+            return node.*;
         },
         else => try self.errorHandler(error.UnexpectedTokenError),
     }
@@ -262,10 +261,10 @@ pub fn parseAssignment(self: *Parser) !*ASTNode {
 
     std.debug.print("{s} mutated!\n", .{name});
 
-    return node;
+    return node.*;
 }
 
-pub fn parseFunctionDeclaration(self: *Parser) !*ASTNode {
+pub fn parseFunctionDeclaration(self: *Parser) !ASTNode {
     const node = try self.allocator.create(ASTNode);
     try self.advance();
 
@@ -349,17 +348,17 @@ pub fn parseFunctionDeclaration(self: *Parser) !*ASTNode {
 
     std.debug.print("fn {s} defined!\n", .{fn_name});
 
-    return node;
+    return node.*;
 }
 
-pub fn parseFunctionCall(self: *Parser) !*ASTNode {
+pub fn parseFunctionCall(self: *Parser) !ASTNode {
     const node = try self.allocator.create(ASTNode);
     try self.advance();
-    return node;
+    return node.*;
 }
 
-pub fn parseFunctionBody(self: *Parser) ![]*ASTNode {
-    var body = std.ArrayList(*ASTNode).init(self.allocator);
+pub fn parseFunctionBody(self: *Parser) ![]ASTNode {
+    var body = std.ArrayList(ASTNode).init(self.allocator);
 
     while (true) {
         switch (self.current_token.token_type) {
@@ -443,7 +442,7 @@ pub fn semiAndGo(self: *Parser) !void {
     try self.advance();
 }
 
-pub fn parseReturn(self: *Parser) !*ASTNode {
+pub fn parseReturn(self: *Parser) !ASTNode {
     const exp = try self.allocator.create(ASTNode);
     try self.advance();
 
@@ -468,5 +467,5 @@ pub fn parseReturn(self: *Parser) !*ASTNode {
     try self.semiAndGo();
 
     try self.advance();
-    return exp;
+    return exp.*;
 }

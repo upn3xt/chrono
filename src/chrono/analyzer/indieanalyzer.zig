@@ -13,7 +13,7 @@ pub fn init(symbols: std.StringHashMap(Object)) IndieAnalyzer {
     return IndieAnalyzer{ .symbols = symbols };
 }
 
-pub fn analyzeVariableDeclaration(self: *IndieAnalyzer, node: *ASTNode) !void {
+pub fn analyzeVariableDeclaration(self: *IndieAnalyzer, node: ASTNode) !void {
     const name = node.data.VariableDeclaration.name;
 
     const exp = node.data.VariableDeclaration.expression;
@@ -45,22 +45,17 @@ pub fn analyzeVariableDeclaration(self: *IndieAnalyzer, node: *ASTNode) !void {
         std.debug.print("Variable already declared.\n", .{});
         return error.RedeclarationError;
     }
-
-    if (var_type == null) {
-        node.data.VariableDeclaration.var_type = exp_type;
-    } else if (var_type.? != exp_type) return error.TypeMismatch;
+    if (var_type != null)
+        if (var_type.? != exp_type) return error.TypeMismatch;
 
     try self.symbols.put(name, .{ .identifier = name, .mutable = mutable, .obtype = exp_type });
 }
 
-pub fn analyzeAssignment(self: *IndieAnalyzer, node: *ASTNode) !void {
+pub fn analyzeAssignment(self: *IndieAnalyzer, node: ASTNode) !void {
     const asg_type = node.data.Assignment.asg_type;
     const variable = node.data.Assignment.variable;
 
-    const varvar = switch (variable.kind) {
-        .VariableReference => variable.*.data.VariableReference,
-        else => unreachable,
-    };
+    const varvar = variable.data.VariableReference;
     if (self.symbols.get(varvar.name)) |ob| {
         if (ob.mutable == true) {
             if (ob.obtype != asg_type) {

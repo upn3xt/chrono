@@ -21,9 +21,7 @@ pub fn analyzer(self: *Analyzer) !void {
         if (index == self.nodes.len) break;
         const node = self.nodes[index];
         switch (node.kind) {
-            .VariableDeclaration => {
-                try self.analyzeVariableDeclaration(node);
-            },
+            .VariableDeclaration => try self.analyzeVariableDeclaration(node),
             .Assignment => try self.analyzeAssignment(node),
             else => return error.SomeError,
         }
