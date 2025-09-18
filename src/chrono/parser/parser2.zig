@@ -115,27 +115,32 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !ASTNode {
 
     try self.advance();
 
+    var var_type: Type = undefined;
     if (self.current_token.token_type == .OPERATOR) {
         if (self.current_token.token_type.OPERATOR != .equal) try self.errorHandler(error.ExpectedOperatorEqual);
         try self.advance();
         switch (self.current_token.token_type) {
             .STRING => {
                 const value = self.current_token.lexeme;
+                var_type = .String;
                 exp.* = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{ .value = value } } };
             },
             .CHAR => {
                 const value = self.current_token.lexeme[0];
+                var_type = .Char;
                 exp.* = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = value } } };
             },
             .NUMBER => {
                 const value = try self.parseNumber(0);
                 std.debug.print("Result: {}\n", .{value});
+                var_type = .Int;
                 exp.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
 
                 const node: ASTNode = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{
                     .name = name,
                     .expression = exp,
                     .mutable = isMutable,
+                    .var_type = .Int,
                 } } };
 
                 std.debug.print("{s}! Mutable: {}\n", .{ name, isMutable });
@@ -153,6 +158,7 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !ASTNode {
             .name = name,
             .expression = exp,
             .mutable = isMutable,
+            .var_type = var_type,
         } } };
 
         std.debug.print("{s}! Mutable: {}\n", .{ name, isMutable });
@@ -196,6 +202,7 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !ASTNode {
             .name = name,
             .expression = exp,
             .mutable = isMutable,
+            .var_type = .Int,
         } } };
 
         std.debug.print("{s}! Mutable: {}\n", .{ name, isMutable });

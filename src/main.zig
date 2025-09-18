@@ -9,6 +9,7 @@ const Analyzer = Import.Analyzer;
 const Object = Import.Object;
 const Codegen = Import.Codegen;
 const Printer = Import.Printer;
+const Walker = Import.Walker;
 
 const llvm = @cImport({
     @cInclude("llvm-c/Core.h");
@@ -18,7 +19,13 @@ const llvm = @cImport({
 });
 
 pub fn main() !void {
-    var file = try std.fs.cwd().openFile("tests/main.chro", .{ .mode = .read_only });
+    const args = try std.process.argsAlloc(std.heap.page_allocator);
+    defer std.process.argsFree(std.heap.page_allocator, args);
+
+    const filepath = args[1];
+    var file = try std.fs.cwd().openFile(filepath, .{ .mode = .read_only });
+
+    const filename = std.fs.path.basename(filepath);
 
     var contentBuf: [1024]u8 = undefined;
     const contentBytes = try file.readAll(&contentBuf);
@@ -55,15 +62,19 @@ pub fn main() !void {
     const context = llvm.LLVMContextCreate();
     defer llvm.LLVMContextDispose(context);
 
-    const module = llvm.LLVMModuleCreateWithName("testmain");
+    const module = llvm.LLVMModuleCreateWithName(filename.ptr);
     defer llvm.LLVMDisposeModule(module);
 
-    const builder = llvm.LLVMCreateBuilder();
-    defer llvm.LLVMDisposeBuilder(builder);
+    // const builder = llvm.LLVMCreateBuilder();
+    // defer llvm.LLVMDisposeBuilder(builder);
 
-    Codegen.createMainWithVariable(module, context, nodes[0]);
+    // Codegen.createMainWithVariable(module, context, nodes[0]);
+
+    try Walker.walk(nodes, module, context);
 
     try Codegen.emitObjectFile(module, "main.o");
 
     std.debug.print("Emition done!\n", .{});
+
+    llvm.LLVMDumpModule(module);
 }

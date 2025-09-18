@@ -10,7 +10,7 @@ kind: NodeKind,
 data: union(NodeKind) {
     VariableDeclaration: struct {
         name: []const u8,
-        var_type: ?Type = null,
+        var_type: Type,
         expression: ?*ASTNode,
         mutable: bool,
     },

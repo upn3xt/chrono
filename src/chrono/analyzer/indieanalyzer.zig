@@ -45,8 +45,7 @@ pub fn analyzeVariableDeclaration(self: *IndieAnalyzer, node: ASTNode) !void {
         std.debug.print("Variable already declared.\n", .{});
         return error.RedeclarationError;
     }
-    if (var_type != null)
-        if (var_type.? != exp_type) return error.TypeMismatch;
+    if (var_type != exp_type) return error.TypeMismatch;
 
     try self.symbols.put(name, .{ .identifier = name, .mutable = mutable, .obtype = exp_type });
 }
