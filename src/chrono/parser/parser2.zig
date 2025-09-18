@@ -322,45 +322,10 @@ pub fn parseFunctionDeclaration(self: *Parser) !ASTNode {
 
     try self.advance();
 
-    const start_pos = self.index;
-
-    while (true) {
-        try self.advance();
-        if (self.current_token.token_type == .SYMBOL)
-            if (self.current_token.token_type.SYMBOL == .r_curlyBracket) break;
-    }
-
-    const fin_pos = self.index;
-
-    self.index = start_pos;
-    const body = try self.parseFunctionBody(self.tokens[start_pos..fin_pos]);
-    self.index = fin_pos;
-
-    node = .{ .kind = .FunctionDeclaration, .data = .{ .FunctionDeclaration = .{
-        .name = fn_name,
-        .fn_type = ret_type,
-        .parameters = parameters.items,
-        .body = body,
-    } } };
-
-    try self.advance();
-
-    std.debug.print("fn {s} defined!\n", .{fn_name});
-
-    return node;
-}
-
-pub fn parseFunctionCall(self: *Parser) !ASTNode {
-    const node: ASTNode = undefined;
-    try self.advance();
-    return node;
-}
-
-pub fn parseFunctionBody(self: *Parser, tokens: []Token) ![]ASTNode {
     var body = std.ArrayList(ASTNode).init(self.allocator);
 
-    for (tokens) |t| {
-        switch (t.token_type) {
+    while (true) {
+        switch (self.current_token.token_type) {
             .KEYWORD => |key| {
                 switch (key) {
                     .const_kw, .var_kw => {
@@ -368,7 +333,6 @@ pub fn parseFunctionBody(self: *Parser, tokens: []Token) ![]ASTNode {
                         if (key == .var_kw) isMutable = true;
                         const var_node = try self.parseVariableDeclaration(isMutable);
                         try body.append(var_node);
-                        break;
                     },
                     .return_kw => {
                         const ret_node = try self.parseReturn();
@@ -392,8 +356,24 @@ pub fn parseFunctionBody(self: *Parser, tokens: []Token) ![]ASTNode {
             else => try self.errorHandler(error.UnexpectedTokenError),
         }
     }
-    std.debug.print("Body has {} elements\n", .{body.capacity});
-    return body.items;
+    node = .{ .kind = .FunctionDeclaration, .data = .{ .FunctionDeclaration = .{
+        .name = fn_name,
+        .fn_type = ret_type,
+        .parameters = parameters.items,
+        .body = body.items,
+    } } };
+
+    try self.advance();
+
+    std.debug.print("fn {s} defined!\n", .{fn_name});
+
+    return node;
+}
+
+pub fn parseFunctionCall(self: *Parser) !ASTNode {
+    const node: ASTNode = undefined;
+    try self.advance();
+    return node;
 }
 
 pub fn parseNumber(self: *Parser, min_bp: u8) !i64 {
