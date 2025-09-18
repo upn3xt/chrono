@@ -235,3 +235,38 @@ Making a independent analyzer to work with the parser. Since some steps depend o
 Now with a minimal analyzer, I can start doing code generation! But just before that I learned that the current way I was doing the AST nodes, allocation and 
 other stuff were actually consuming. So refactoring is needed and resolving the currupted memory issue in the analyzer. THEN, I can start generating code.
 Plus, need a way to print stuff. I'll get to that in the code generation.
+
+
+## EMITION EMITION EMITION 
+
+Take a look at the output:
+
+   chrono   git:(main)  nvim
+   chrono   git:(main)  zig build run -- tests/main.chro
+Starting Tokenization...
+Tokenization done.
+Starting Parsing...
+Result: 10
+x! Mutable: false
+Result: 20
+y! Mutable: false
+fn main defined!
+Parsing done.
+LLVM Emit Object...
+Emition done!
+; ModuleID = 'main.chro'
+source_filename = "main.chro"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+define i32 @main() {
+entry:
+  %x = alloca i32, align 4
+  store i32 10, ptr %x, align 4
+  %y = alloca i32, align 4
+  store i32 20, ptr %y, align 4
+  ret i32 0
+}
+
+What a beatiful thing that was not handcrafted. But actually logically solved! Finally! We got some IR in our hands now and only need to make it in 
+binary, but this is actually the milestone I was hoping for. Thank God I've made it this far, but I'm still not there yet. But today I take this win.
