@@ -270,3 +270,11 @@ entry:
 
 What a beatiful thing that was not handcrafted. But actually logically solved! Finally! We got some IR in our hands now and only need to make it in 
 binary, but this is actually the milestone I was hoping for. Thank God I've made it this far, but I'm still not there yet. But today I take this win.
+
+
+## Clean up 
+
+Right now, I did a quick clean up on the repository and on the main file. Since the milestone was achieved, I took my time to rest and lowkey got lazy about it.
+There's still awesome things to do and this is just the very very beginning. It's exciting and meh. Means more work too but it's alright. There's still a lot 
+to clean but I'll do that with time and when proceeding to the next thing, I will talk about it. Maybe re-assignments and function definitions are the 
+next step.

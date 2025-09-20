@@ -1,802 +1,468 @@
 const std = @import("std");
 
 const Import = @import("../imports.zig");
-const ParseError = @import("errors.zig");
-
 const Token = Import.Token;
 const ASTNode = Import.ASTNode;
+const Type = Import.Types.Types;
+const IndieAnalyzer = Import.IndieAnalyzer;
+const Object = Import.Object;
+
+const ExpectedTokenError = error{
+    ExpectedIdentifierError,
+    ExpectedPuntuactionError,
+    ExpectedPuntuactionSemiColonError,
+    ExpectedNumberLiteralError,
+    ExpecterOperator,
+    ExpectedOperatorEqual,
+    ExpectedPuntuactionColon,
+};
+const GeneralError = error{ IndexOutOfBoundsError, UnknowTokenError, UnexpectedTokenError };
+const ParserError = GeneralError || ExpectedTokenError;
 
 const Parser = @This();
 
 allocator: std.mem.Allocator,
 tokens: []Token,
 index: usize = 0,
+current_token: Token,
+analyzer: IndieAnalyzer,
 
-pub fn init(allocator: std.mem.Allocator, tokens: []Token) Parser {
-    return Parser{ .allocator = allocator, .tokens = tokens, .index = 0 };
+pub fn init(allocator: std.mem.Allocator, tokens: []Token, symbols: std.StringHashMap(Object)) Parser {
+    return Parser{ .allocator = allocator, .tokens = tokens, .index = 0, .current_token = tokens[0], .analyzer = .init(symbols) };
 }
 
-/// Parses the tokens list
-/// Returns an array of possibly null ASTNodes
-pub fn ParseTokens(self: *Parser) !?[]*ASTNode {
-    var node_list = std.ArrayList(*ASTNode).init(std.heap.page_allocator);
+pub fn advance(self: *Parser) !void {
+    if (self.index + 1 >= self.tokens.len) try self.errorHandler(error.IndexOutOfBoundsError);
 
+    self.index += 1;
+    self.current_token = self.tokens[self.index];
+}
+
+pub fn previous(self: *Parser) !void {
+    self.index -= 1;
+    self.current_token = self.tokens[self.index];
+}
+
+pub fn errorHandler(self: *Parser, err: ParserError) ParserError!void {
+    switch (err) {
+        error.IndexOutOfBoundsError => {
+            std.debug.print("Failed to advance any further. Reached EOF early at position {}.\n Last token: {s}\n", .{ self.index, self.current_token.lexeme });
+            return err;
+        },
+        error.UnknowTokenError => {
+            std.debug.print("Unknow token found at position {}. Token: {s}\n", .{ self.index, self.current_token.lexeme });
+            return err;
+        },
+        error.UnexpectedTokenError => {
+            std.debug.print("Unexpected token at position {}. Token: {s}\n", .{ self.index, self.current_token.lexeme });
+            return err;
+        },
+        else => {
+            std.debug.print("Unknow error.\n Check index {}.\nLast Token: {s}\n", .{ self.index, self.current_token.lexeme });
+            return err;
+        },
+    }
+}
+
+pub fn ParseTokens(self: *Parser) ![]ASTNode {
+    var node_list = std.ArrayList(ASTNode).init(self.allocator);
     while (true) {
-        if (self.index >= self.tokens.len) return error.IndexOutOfBounds;
-        const current_token = self.tokens[self.index];
-        switch (current_token.token_type) {
+        if (self.index >= self.tokens.len) try self.errorHandler(error.IndexOutOfBoundsError);
+
+        switch (self.current_token.token_type) {
             .KEYWORD => |key| {
                 switch (key) {
                     .const_kw, .var_kw => {
-                        var ismutable = false;
-                        if (key == .var_kw) ismutable = true;
-                        const node = try self.parseVariableDeclaration(ismutable) orelse return error.VariableDeclarationParsingFailed;
-                        std.debug.print("VAR\n", .{});
-                        try node_list.append(node);
+                        var isMutable = false;
+                        if (key == .var_kw) isMutable = true;
+                        const var_node = try self.parseVariableDeclaration(isMutable);
+                        try self.analyzer.analyzeVariableDeclaration(var_node);
+                        try node_list.append(var_node);
                     },
                     .function_kw => {
-                        const node = try self.parseFunctionDeclaration() orelse return error.FunctionDeclarationFailed;
-                        std.debug.print("FUNCTION\n", .{});
-                        try node_list.append(node);
-                        self.index += 1;
+                        const fn_node = try self.parseFunctionDeclaration();
+                        // try self.analyzer.analyzeFunctionDeclaration(fn_node);
+                        try node_list.append(fn_node);
                     },
-                    .pub_kw => self.index += 1,
+                    .pub_kw => try self.advance(),
                     else => break,
                 }
             },
             .IDENTIFIER => {
-                const node = try self.parseAssignmentOrFnCall() orelse return error.VariableReferenceFailed;
-                std.debug.print("NODE\n", .{});
-                try node_list.append(node);
-                self.index += 1;
+                const id_node = try self.parseAssignment();
+                try self.analyzer.analyzeAssignment(id_node);
+                try node_list.append(id_node);
             },
-            .EOF, .UNKNOWN => break,
-            .COMMENT => self.index += 1,
-            else => {},
+            .COMMENT => try self.advance(),
+            .UNKNOWN => try self.errorHandler(error.UnknowTokenError),
+            .EOF => break,
+            else => try self.errorHandler(error.UnexpectedTokenError),
         }
     }
+
     return node_list.items;
 }
 
-pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !?*ASTNode {
-    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
-    self.index += 1;
+pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !ASTNode {
+    const exp = try self.allocator.create(ASTNode);
+    try self.advance();
 
-    var tokentype = self.tokens[self.index].token_type;
-
-    if (tokentype != .IDENTIFIER) {
-        std.debug.print("Expected indetifier, got {s}.\n", .{self.tokens[self.index].lexeme});
-        return error.ExpectedIdentifier;
+    if (self.current_token.token_type != .IDENTIFIER) {
+        std.debug.print("Got token: {s}\t type: {}", .{ self.current_token.lexeme, self.current_token.token_type });
+        try self.errorHandler(error.ExpectedIdentifierError);
     }
+    const name = self.current_token.lexeme;
 
-    const varName = self.tokens[self.index].lexeme;
+    try self.advance();
 
-    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
-    self.index += 1;
+    var var_type: Type = undefined;
+    if (self.current_token.token_type == .OPERATOR) {
+        if (self.current_token.token_type.OPERATOR != .equal) try self.errorHandler(error.ExpectedOperatorEqual);
+        try self.advance();
+        switch (self.current_token.token_type) {
+            .STRING => {
+                const value = self.current_token.lexeme;
+                var_type = .String;
+                exp.* = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{ .value = value } } };
+            },
+            .CHAR => {
+                const value = self.current_token.lexeme[0];
+                var_type = .Char;
+                exp.* = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = value } } };
+            },
+            .NUMBER => {
+                const value = try self.parseNumber(0);
+                std.debug.print("Result: {}\n", .{value});
+                var_type = .Int;
+                exp.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
 
-    tokentype = self.tokens[self.index].token_type;
+                const node: ASTNode = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{
+                    .name = name,
+                    .expression = exp,
+                    .mutable = isMutable,
+                    .var_type = .Int,
+                } } };
 
-    // type inference
-    if (tokentype == .OPERATOR) {
-        if (tokentype.OPERATOR != .equal) return error.ExpectedOperatorEqual;
-
-        if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
-        self.index += 1;
-
-        tokentype = self.tokens[self.index].token_type;
-
-        if (tokentype == .IDENTIFIER) {
-            const var_ref = try self.allocator.create(ASTNode);
-            var_ref.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = varName } } };
-
-            if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
-            self.index += 1;
-
-            tokentype = self.tokens[self.index].token_type;
-            if (tokentype != .PUNCTUATION) return error.ExpectedPuntuaction;
-            if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
-            self.index += 1;
-
-            const node = try self.allocator.create(ASTNode);
-            node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .name = varName, .expression = var_ref, .mutable = isMutable } } };
-            return node;
-        } else if (tokentype == .STRING) {
-            const value_str = self.tokens[self.index].lexeme;
-
-            const str_node = try self.allocator.create(ASTNode);
-
-            str_node.* = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{ .value = value_str } } };
-
-            const node = try self.allocator.create(ASTNode);
-
-            if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
-            self.index += 1;
-            tokentype = self.tokens[self.index].token_type;
-
-            if (tokentype != .PUNCTUATION) return error.ExpectedPuntuaction;
-            if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
-            self.index += 1;
-
-            node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .name = varName, .expression = str_node, .mutable = isMutable } } };
-            return node;
-        } else if (tokentype == .CHAR) {
-            const value_char = self.tokens[self.index].lexeme[0];
-
-            const char_node = try self.allocator.create(ASTNode);
-
-            char_node.* = .{ .kind = .StringLiteral, .data = .{ .CharLiteral = .{ .value = value_char } } };
-
-            const node = try self.allocator.create(ASTNode);
-
-            if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
-            self.index += 1;
-            tokentype = self.tokens[self.index].token_type;
-
-            if (tokentype != .PUNCTUATION) return error.ExpectedPuntuaction;
-            if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
-            self.index += 1;
-
-            node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .name = varName, .expression = char_node, .mutable = isMutable } } };
-            return node;
-        } else if (tokentype == .NUMBER) {
-            const num = try std.fmt.parseInt(i64, self.tokens[self.index].lexeme, 10);
-
-            if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
-            self.index += 1;
-
-            tokentype = self.tokens[self.index].token_type;
-            if (tokentype != .PUNCTUATION) return error.ExpectedPuntuaction;
-            if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
-            self.index += 1;
-
-            const num_lit = try self.allocator.create(ASTNode);
-            num_lit.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = num } } };
-
-            const node = try self.allocator.create(ASTNode);
-            node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .name = varName, .expression = num_lit, .mutable = isMutable } } };
-            return node;
-        }
-    }
-    // type inference
-    //
-    // type annotation
-    else if (tokentype == .PUNCTUATION) {
-        if (tokentype.PUNCTUATION != .colon) return error.ExpectedPuntuactionColon;
-
-        if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
-        self.index += 1;
-
-        tokentype = self.tokens[self.index].token_type;
-
-        if (tokentype != .IDENTIFIER) return error.ExpectedIdentifier;
-
-        if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
-        self.index += 1;
-
-        tokentype = self.tokens[self.index].token_type;
-
-        if (tokentype != .OPERATOR) return error.ExpectedOperator;
-        if (tokentype.OPERATOR != .equal) return error.ExpectedOperatorEqual;
-
-        if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
-        self.index += 1;
-        tokentype = self.tokens[self.index].token_type;
-
-        //number
-        if (tokentype == .NUMBER) {
-            const value = try std.fmt.parseInt(i64, self.tokens[self.index].lexeme, 10);
-
-            if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
-
-            tokentype = self.tokens[self.index].token_type;
-
-            if (tokentype == .OPERATOR) {
-                if (tokentype.OPERATOR == .equal) return error.UnexpectedOperatorEqual;
-
-                const oper: u8 = self.tokens[self.index].lexeme[0];
-
-                if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
-                self.index += 1;
-
-                const value2 = try std.fmt.parseInt(i64, self.tokens[self.index].lexeme, 10);
-
-                if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
-                self.index += 1;
-                tokentype = self.tokens[self.index].token_type;
-
-                if (tokentype != .PUNCTUATION) {
-                    std.debug.print("Error: Expected puntuaction type got: {s} with type: {}\n", .{ self.tokens[self.index].lexeme, self.tokens[self.index].token_type });
-                    return error.ExpectedPuntuaction;
-                }
-                if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
-                self.index += 1;
-
-                const l_node = try self.allocator.create(ASTNode);
-
-                l_node.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
-                const r_node = try self.allocator.create(ASTNode);
-
-                r_node.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value2 } } };
-
-                const bin_node = try self.allocator.create(ASTNode);
-
-                bin_node.* = .{ .kind = .BinaryOperation, .data = .{ .BinaryOperation = .{ .left = l_node, .right = r_node, .operator = oper } } };
-
-                const varRef = try self.allocator.create(ASTNode);
-
-                varRef.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = varName } } };
-
-                const node = try self.allocator.create(ASTNode);
-
-                node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .expression = bin_node, .name = varName, .mutable = isMutable } } };
-                return node;
-            } else if (tokentype == .PUNCTUATION) {
-                if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
-                self.index += 1;
-
-                const x_node = try self.allocator.create(ASTNode);
-
-                x_node.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
-
-                const node = try self.allocator.create(ASTNode);
-
-                node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .expression = x_node, .name = varName, .mutable = isMutable } } };
+                std.debug.print("{s}! Mutable: {}\n", .{ name, isMutable });
 
                 return node;
-            }
+            },
+            else => try self.errorHandler(error.UnknowTokenError),
         }
-        //number
-        //
-        //string
-        else if (tokentype == .STRING) {
-            const value_str = self.tokens[self.index].lexeme;
 
-            const str_node = try self.allocator.create(ASTNode);
+        try self.advance();
 
-            str_node.* = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{ .value = value_str } } };
+        try self.semiAndGo();
 
-            const node = try self.allocator.create(ASTNode);
+        const node: ASTNode = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{
+            .name = name,
+            .expression = exp,
+            .mutable = isMutable,
+            .var_type = var_type,
+        } } };
 
-            if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
-            self.index += 1;
-            tokentype = self.tokens[self.index].token_type;
+        std.debug.print("{s}! Mutable: {}\n", .{ name, isMutable });
 
-            if (tokentype != .PUNCTUATION) return error.ExpectedPuntuaction;
-            if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
-
-            self.index += 1;
-
-            node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .name = varName, .expression = str_node, .mutable = isMutable } } };
-
-            return node;
-        }
-        //string
-        //
-        //char
-        else if (tokentype == .CHAR) {
-            const valueChar = self.tokens[self.index].lexeme[0];
-
-            const char_node = try self.allocator.create(ASTNode);
-            char_node.* = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = valueChar } } };
-
-            const node = try self.allocator.create(ASTNode);
-            node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{ .name = varName, .expression = char_node, .mutable = isMutable } } };
-
-            if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
-            self.index += 1;
-            tokentype = self.tokens[self.index].token_type;
-
-            if (tokentype != .PUNCTUATION) return error.ExpectedPuntuaction;
-            if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
-
-            self.index += 1;
-            return node;
-        }
-        //char
+        return node;
     }
-    return null;
+    if (self.current_token.token_type == .PUNCTUATION) {
+        if (self.current_token.token_type.PUNCTUATION != .colon) try self.errorHandler(error.ExpectedPuntuactionColon);
+        try self.advance();
+
+        if (self.current_token.token_type != .IDENTIFIER) try self.errorHandler(error.ExpectedIdentifierError);
+
+        try self.advance();
+
+        if (self.current_token.token_type != .OPERATOR) try self.errorHandler(error.ExpecterOperator);
+        if (self.current_token.token_type.OPERATOR != .equal) try self.errorHandler(error.ExpectedOperatorEqual);
+
+        try self.advance();
+
+        switch (self.current_token.token_type) {
+            .STRING => {
+                const value = self.current_token.lexeme;
+                exp.* = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{ .value = value } } };
+            },
+            .CHAR => {
+                const value = self.current_token.lexeme[0];
+                exp.* = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = value } } };
+            },
+            .NUMBER => {
+                const value = try self.parseNumber(0);
+                exp.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
+            },
+            else => try self.errorHandler(error.UnknowTokenError),
+        }
+
+        try self.advance();
+
+        try self.semiAndGo();
+
+        const node: ASTNode = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{
+            .name = name,
+            .expression = exp,
+            .mutable = isMutable,
+            .var_type = .Int,
+        } } };
+
+        std.debug.print("{s}! Mutable: {}\n", .{ name, isMutable });
+        return node;
+    } else {
+        try self.errorHandler(error.UnexpectedTokenError);
+    }
+    return error.OperationVarDecFailed;
 }
-pub fn parseFunctionDeclaration(self: *Parser) !?*ASTNode {
-    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
-    self.index += 1;
-    var tokentype = self.tokens[self.index].token_type;
 
-    if (tokentype != .IDENTIFIER) return error.ExpectedIdentifier;
+pub fn parseAssignment(self: *Parser) !ASTNode {
+    var asgtype: Type = undefined;
+    const exp = try self.allocator.create(ASTNode);
 
-    const fnName = self.tokens[self.index].lexeme;
+    if (self.current_token.token_type != .IDENTIFIER) try self.errorHandler(error.ExpectedIdentifierError);
+    const name = self.current_token.lexeme;
+    const var_node = try self.allocator.create(ASTNode);
+    if (self.analyzer.symbols.get(name)) |ob| {
+        if (ob.mutable != null)
+            var_node.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = name, .mutable = ob.mutable.? } } };
+    } else return error.UndefinedVariableError;
 
-    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
-    self.index += 1;
-    tokentype = self.tokens[self.index].token_type;
+    try self.advance();
 
-    if (tokentype != .SYMBOL) return error.ExpectedSymbol;
-    if (tokentype.SYMBOL != .l_roundBracket) return error.ExpectedSymbolLeftRoundBracket;
+    if (self.current_token.token_type != .OPERATOR) return error.ExpectedOperator;
+    if (self.current_token.token_type.OPERATOR != .equal) try self.errorHandler(error.ExpectedOperatorEqual);
 
-    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
-    self.index += 1;
-    tokentype = self.tokens[self.index].token_type;
+    try self.advance();
+
+    switch (self.current_token.token_type) {
+        .STRING => {
+            const value = self.current_token.lexeme;
+            exp.* = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{
+                .value = value,
+            } } };
+            asgtype = .String;
+        },
+        .CHAR => {
+            const value = self.current_token.lexeme[0];
+            exp.* = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = value } } };
+            asgtype = .Char;
+        },
+        .NUMBER => {
+            const value = try self.parseNumber(0);
+            exp.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
+            asgtype = .Int;
+
+            const node = try self.allocator.create(ASTNode);
+            node.* = .{ .kind = .Assignment, .data = .{ .Assignment = .{ .variable = var_node, .expression = exp, .asg_type = asgtype } } };
+
+            std.debug.print("{s} mutated!\n", .{name});
+
+            return node.*;
+        },
+        else => try self.errorHandler(error.UnexpectedTokenError),
+    }
+
+    try self.advance();
+
+    try self.semiAndGo();
+
+    const node: ASTNode = .{ .kind = .Assignment, .data = .{ .Assignment = .{ .variable = var_node, .expression = exp, .asg_type = asgtype } } };
+
+    std.debug.print("{s} mutated!\n", .{name});
+
+    return node;
+}
+
+pub fn parseFunctionDeclaration(self: *Parser) !ASTNode {
+    var node: ASTNode = undefined;
+    try self.advance();
+
+    if (self.current_token.token_type != .IDENTIFIER) try self.errorHandler(error.ExpectedIdentifierError);
+    const fn_name = self.current_token.lexeme;
+
+    try self.advance();
+
+    if (self.current_token.token_type != .SYMBOL) return error.ExpectedSymbol;
+    if (self.current_token.token_type.SYMBOL != .l_roundBracket) return error.ExpectedSymbolLeftRoundBracket;
+
+    try self.advance();
 
     var parameters = std.ArrayList(*ASTNode).init(self.allocator);
     while (true) {
-        if (tokentype == .SYMBOL)
-            if (tokentype.SYMBOL == .r_roundBracket) break;
+        if (self.current_token.token_type == .SYMBOL)
+            if (self.current_token.token_type.SYMBOL == .r_roundBracket) break;
 
-        if (tokentype != .IDENTIFIER) return error.ExpectedIdentifier;
+        if (self.current_token.token_type != .IDENTIFIER) return error.ExpectedIdentifier;
         const name = self.tokens[self.index].lexeme;
 
-        self.index += 1;
-        tokentype = self.tokens[self.index].token_type;
+        try self.advance();
 
-        if (tokentype != .PUNCTUATION) return error.ExpectedPuntuaction;
-        if (tokentype.PUNCTUATION != .colon) return error.ExpectedPuntuactionColon;
+        if (self.current_token.token_type != .PUNCTUATION) return error.ExpectedPuntuaction;
+        if (self.current_token.token_type.PUNCTUATION != .colon) return error.ExpectedPuntuactionColon;
 
-        self.index += 1;
-        tokentype = self.tokens[self.index].token_type;
+        try self.advance();
 
-        if (tokentype != .IDENTIFIER) return error.ExpectedIdentifier;
-        const par_type = self.tokens[self.index].lexeme;
+        if (self.current_token.token_type != .IDENTIFIER) return error.ExpectedIdentifier;
+        const par_type = self.h_getType(self.tokens[self.index].lexeme) orelse return error.InvalidTypeError;
 
         const parameter = try self.allocator.create(ASTNode);
         parameter.* = .{ .kind = .Parameter, .data = .{ .Parameter = .{ .name = name, .par_type = par_type } } };
 
         try parameters.append(parameter);
-        std.debug.print("BANANA!\n", .{});
+        std.debug.print("param {s}\n", .{name});
 
-        self.index += 1;
-        tokentype = self.tokens[self.index].token_type;
+        try self.advance();
 
-        if (tokentype == .PUNCTUATION) {
-            if (tokentype.PUNCTUATION == .comma) {
-                self.index += 1;
-                tokentype = self.tokens[self.index].token_type;
+        if (self.current_token.token_type == .PUNCTUATION) {
+            if (self.current_token.token_type.PUNCTUATION == .comma) {
+                try self.advance();
             }
         }
     }
 
-    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
-    self.index += 1;
-    tokentype = self.tokens[self.index].token_type;
+    try self.advance();
 
-    if (tokentype != .IDENTIFIER) return error.ExpectedIdentifier;
-    const fnType = self.tokens[self.index].lexeme;
+    const ret_type = self.h_getType(self.current_token.lexeme) orelse return error.InvalidTypeError;
 
-    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
-    self.index += 1;
-    tokentype = self.tokens[self.index].token_type;
+    try self.advance();
 
-    if (tokentype != .SYMBOL) return error.ExpectedSymbol;
-    if (tokentype.SYMBOL != .l_curlyBracket) return error.ExpectedSymbolLeftCurlyBracket;
+    if (self.current_token.token_type != .SYMBOL) return error.ExpectedSymbol;
+    if (self.current_token.token_type.SYMBOL != .l_curlyBracket) return error.ExpectedSymbolLeftCurlyBracket;
 
-    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
-    self.index += 1;
-    tokentype = self.tokens[self.index].token_type;
+    try self.advance();
 
-    const start_pos = self.index;
+    var body = std.ArrayList(ASTNode).init(self.allocator);
 
     while (true) {
-        if (self.index + 1 >= self.tokens.len) return error.OutOfBoundsError;
-        self.index += 1;
-        tokentype = self.tokens[self.index].token_type;
-        if (tokentype == .SYMBOL)
-            if (tokentype.SYMBOL == .r_curlyBracket) break;
-    }
-
-    const fin_pos = self.index;
-
-    const fnBody = try self.parseFnBody(start_pos) orelse return error.ParsingBodyFailed;
-
-    const fnNode = try self.allocator.create(ASTNode);
-    fnNode.* = .{ .kind = .FunctionDeclaration, .data = .{ .FunctionDeclaration = .{ .name = fnName, .fn_type = fnType, .body = fnBody, .parameters = parameters.items } } };
-
-    self.index = fin_pos;
-    return fnNode;
-}
-
-pub fn parseFnBody(self: *Parser, start: usize) !?[]*ASTNode {
-    self.index = start;
-    var body = std.ArrayList(*ASTNode).init(self.allocator);
-
-    while (true) {
-        const current_token = self.tokens[self.index].token_type;
-
-        switch (current_token) {
+        switch (self.current_token.token_type) {
             .KEYWORD => |key| {
-                if (key == .const_kw) {
-                    const node = try self.parseVariableDeclaration(false) orelse return error.VariableDeclarationParsingFailed;
-                    std.debug.print("VAR\n", .{});
-                    try body.append(node);
+                switch (key) {
+                    .const_kw, .var_kw => {
+                        var isMutable = false;
+                        if (key == .var_kw) isMutable = true;
+                        const var_node = try self.parseVariableDeclaration(isMutable);
+                        try body.append(var_node);
+                    },
+                    .return_kw => {
+                        const ret_node = try self.parseReturn();
+                        try body.append(ret_node);
+                        break;
+                    },
+                    else => {},
                 }
-                if (key == .var_kw) {
-                    const node = try self.parseVariableDeclaration(true) orelse return error.VariableDeclarationParsingFailed;
-                    std.debug.print("VAR\n", .{});
-                    try body.append(node);
-                }
-                self.index += 1;
             },
             .IDENTIFIER => {
-                const node = try self.parseAssignmentOrFnCall() orelse return error.AssignmentParsingFailed;
-                std.debug.print("VAR OR FN\n", .{});
-                try body.append(node);
-                self.index += 1;
+                const id_node = try self.parseAssignment();
+                try body.append(id_node);
             },
-            else => break,
+            .SYMBOL => |s| {
+                if (s != .r_curlyBracket) try self.errorHandler(error.UnexpectedTokenError);
+                break;
+            },
+            .COMMENT => try self.advance(),
+            .UNKNOWN => try self.errorHandler(error.UnknowTokenError),
+            .EOF => return error.ReachedEOFEarly,
+            else => try self.errorHandler(error.UnexpectedTokenError),
         }
     }
+    node = .{ .kind = .FunctionDeclaration, .data = .{ .FunctionDeclaration = .{
+        .name = fn_name,
+        .fn_type = ret_type,
+        .parameters = parameters.items,
+        .body = body.items,
+    } } };
 
-    return body.items;
+    try self.advance();
+
+    std.debug.print("fn {s} defined!\n", .{fn_name});
+
+    return node;
 }
-pub fn parseAssignmentOrFnCall(self: *Parser) !?*ASTNode {
-    const name = self.tokens[self.index].lexeme;
 
-    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return null;
-    self.index += 1;
-    var tokentype = self.tokens[self.index].token_type;
+pub fn parseFunctionCall(self: *Parser) !ASTNode {
+    const node: ASTNode = undefined;
+    try self.advance();
+    return node;
+}
 
-    if (tokentype == .OPERATOR) {
-        if (tokentype.OPERATOR == .equal) {
-            if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
-            self.index += 1;
-            tokentype = self.tokens[self.index].token_type;
-            if (tokentype == .STRING) {
-                const value = self.tokens[self.index].lexeme;
+pub fn parseNumber(self: *Parser, min_bp: u8) !i64 {
+    var left = try std.fmt.parseInt(i64, self.current_token.lexeme, 10);
 
-                const var_node = try self.allocator.create(ASTNode);
-                var_node.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = name } } };
+    try self.advance();
 
-                const str_node = try self.allocator.create(ASTNode);
-                str_node.* = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{ .value = value } } };
-
-                const node = try self.allocator.create(ASTNode);
-                node.* = .{ .kind = .Assignment, .data = .{ .Assignment = .{ .expression = str_node, .variable = var_node, .asg_type = "string" } } };
-
-                if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
-                self.index += 1;
-                tokentype = self.tokens[self.index].token_type;
-
-                if (tokentype != .PUNCTUATION) return error.ExpectedPuntuaction;
-                if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
-
-                return node;
+    while (true) {
+        if (self.current_token.token_type == .PUNCTUATION) {
+            if (self.current_token.token_type.PUNCTUATION == .semi_colon) {
+                try self.advance();
+                break;
             }
-            if (tokentype == .CHAR) {
-                const value = self.tokens[self.index].lexeme[0];
-
-                const var_node = try self.allocator.create(ASTNode);
-                var_node.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = name } } };
-
-                const char_node = try self.allocator.create(ASTNode);
-                char_node.* = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = value } } };
-
-                const node = try self.allocator.create(ASTNode);
-                node.* = .{ .kind = .Assignment, .data = .{ .Assignment = .{ .expression = char_node, .variable = var_node, .asg_type = "char" } } };
-
-                if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
-                self.index += 1;
-                tokentype = self.tokens[self.index].token_type;
-
-                if (tokentype != .PUNCTUATION) return error.ExpectedPuntuaction;
-                if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
-
-                return node;
-            }
-            if (tokentype == .NUMBER) {
-                const node = try self.parseNumberOrOperation() orelse return error.ParsingNumberOrOperationFailed;
-                return node;
-            } else return error.UnexpectedToken;
         }
+
+        if (self.current_token.token_type != .OPERATOR) break;
+
+        const op = self.current_token.token_type.OPERATOR;
+
+        const an = struct { lbp: u8, rbp: u8 }; // anonym struct
+        const binding: ?an = switch (op) {
+            .plus, .minus => .{ .lbp = 10, .rbp = 11 },
+            .times, .divideBy => .{ .lbp = 20, .rbp = 21 },
+            else => null,
+        };
+
+        if (binding == null or binding.?.lbp < min_bp) break;
+
+        try self.advance();
+
+        // Parse right-hand side expression with right binding power
+        const rhs = try self.parseNumber(binding.?.rbp);
+
+        left = switch (op) {
+            .plus => left + rhs,
+            .minus => left - rhs,
+            .times => left * rhs,
+            .divideBy => @divFloor(left, rhs),
+            else => unreachable,
+        };
     }
-    if (tokentype == .SYMBOL) {
-        if (tokentype.SYMBOL != .l_roundBracket) return error.ExpectedSymbolLeftRoundBracket;
-        if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
-        self.index += 1;
-        tokentype = self.tokens[self.index].token_type;
 
-        var arguments = std.ArrayList(*ASTNode).init(self.allocator);
-        while (true) {
-            if (self.index + 1 >= self.tokens.len) return error.OutOfBoundsError;
-            if (tokentype == .SYMBOL) {
-                if (tokentype.SYMBOL == .r_roundBracket) break;
-            }
+    return left;
+}
+pub fn semiAndGo(self: *Parser) !void {
+    if (self.current_token.token_type != .PUNCTUATION) try self.errorHandler(error.ExpectedPuntuactionError);
+    if (self.current_token.token_type.PUNCTUATION != .semi_colon) try self.errorHandler(error.ExpectedPuntuactionSemiColonError);
+    try self.advance();
+}
 
-            if (tokentype == .IDENTIFIER) {
-                const id_name = self.tokens[self.index].lexeme;
-                const id_node = try self.allocator.create(ASTNode);
-                id_node.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = id_name } } };
+pub fn parseReturn(self: *Parser) !ASTNode {
+    var exp: ASTNode = undefined;
+    try self.advance();
 
-                try arguments.append(id_node);
-                std.debug.print("arg!\n", .{});
-            }
-            if (tokentype == .STRING) {
-                const value = self.tokens[self.index].lexeme;
-                const str_node = try self.allocator.create(ASTNode);
-                str_node.* = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{ .value = value } } };
+    switch (self.current_token.token_type) {
+        .STRING => {
+            const value = self.current_token.lexeme;
+            std.debug.print("returning {s}...\n", .{value});
+            exp = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{ .value = value } } };
+        },
+        .CHAR => {
+            const value = self.current_token.lexeme[0];
+            std.debug.print("returning {c}...\n", .{value});
+            exp = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = value } } };
+        },
+        .NUMBER => {
+            const value = try self.parseNumber(0);
+            exp = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
+        },
+        else => try self.errorHandler(error.UnexpectedTokenError),
+    }
 
-                try arguments.append(str_node);
-                std.debug.print("arg!\n", .{});
-            }
-            if (tokentype == .CHAR) {
-                const value = self.tokens[self.index].lexeme[0];
-                const char_node = try self.allocator.create(ASTNode);
-                char_node.* = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = value } } };
+    try self.semiAndGo();
 
-                try arguments.append(char_node);
-                std.debug.print("arg!\n", .{});
-            }
-            if (tokentype == .NUMBER) {
-                const value_unparsed = self.tokens[self.index].lexeme;
-                std.debug.print("{s}\n", .{value_unparsed});
-                const value = try std.fmt.parseInt(i64, value_unparsed, 10);
-                const num_node = try self.allocator.create(ASTNode);
-                num_node.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
+    try self.advance();
+    return exp;
+}
 
-                try arguments.append(num_node);
-                std.debug.print("arg!\n", .{});
-            }
-
-            if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
-            self.index += 1;
-            tokentype = self.tokens[self.index].token_type;
-
-            if (tokentype == .PUNCTUATION) {
-                if (tokentype.PUNCTUATION == .comma) {
-                    if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
-                    self.index += 1;
-                    tokentype = self.tokens[self.index].token_type;
-                }
-            }
-        }
-        if (self.index + 1 >= self.tokens.len or self.tokens[self.index + 1].token_type == .EOF) return error.OutOfBoundsError;
-        self.index += 1;
-        tokentype = self.tokens[self.index].token_type;
-
-        if (tokentype != .PUNCTUATION) return error.ExpectedPuntuaction;
-        if (tokentype.PUNCTUATION != .semi_colon) return error.ExpectedPuntuactionSemiColon;
-
-        const fnCall = try self.allocator.create(ASTNode);
-
-        fnCall.* = .{ .kind = .FunctionReference, .data = .{ .FunctionReference = .{ .name = name } } };
-        std.debug.print("CALL\n", .{});
-        return fnCall;
-    } else return error.UnexpectedToken;
-
+pub fn h_getType(_: *Parser, elem: []const u8) ?Type {
+    if (elem[0] == 'i') return Type.Int;
+    if (elem[0] == 'u') return Type.Char;
+    if (std.mem.eql(u8, "string", elem)) return Type.String;
+    if (std.mem.eql(u8, "void", elem)) return Type.Void;
     return null;
 }
-
-pub fn parseNumberOrOperation(self: *Parser) !?*ASTNode {
-    const value_unparsed = self.tokens[self.index].lexeme;
-    const value = try std.fmt.parseInt(i64, value_unparsed, 10);
-    const num_node = try self.allocator.create(ASTNode);
-    num_node.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
-    return num_node;
-}
-
-// pub fn parseBinaryOperation(self:*Parser) !?*ASTNode {
-//     if()
-// }
-//
-// const std = @import("std");
-//
-// pub const TokenType = enum {
-//     number,
-//     plus,
-//     minus,
-//     star,
-//     slash,
-//     eof,
-// };
-//
-// pub const Token = struct {
-//     kind: TokenType,
-//     value: ?i64 = null,
-// };
-//
-// pub fn tokenize(input: []const u8, allocator: std.mem.Allocator) ![]Token {
-//     var list = std.ArrayList(Token).init(allocator);
-//     var i: usize = 0;
-//
-//     while (i < input.len) {
-//         const c = input[i];
-//         switch (c) {
-//             '0'...'9' => {
-//                 var start = i;
-//                 while (i < input.len and input[i] >= '0' and input[i] <= '9') : (i += 1) {}
-//                 const num_str = input[start..i];
-//                 const val = try std.fmt.parseInt(i64, num_str, 10);
-//                 try list.append(Token{ .kind = .number, .value = val });
-//                 continue;
-//             },
-//             '+' => try list.append(Token{ .kind = .plus }),
-//             '-' => try list.append(Token{ .kind = .minus }),
-//             '*' => try list.append(Token{ .kind = .star }),
-//             '/' => try list.append(Token{ .kind = .slash }),
-//             ' ', '\t', '\n' => {},
-//             else => return error.InvalidCharacter,
-//         }
-//         i += 1;
-//     }
-//     try list.append(Token{ .kind = .eof });
-//     return list.toOwnedSlice();
-// }
-//
-// pub const Parser = struct {
-//     tokens: []const Token,
-//     index: usize,
-//
-//     fn peek(self: *Parser) Token {
-//         return self.tokens[self.index];
-//     }
-//
-//     fn advance(self: *Parser) void {
-//         if (self.index < self.tokens.len - 1) self.index += 1;
-//     }
-//
-//     fn parse_expression(self: *Parser, min_bp: u8) i64 {
-//         var tok = self.peek();
-//         var lhs: i64 = switch (tok.kind) {
-//             .number => blk: {
-//                 self.advance();
-//                 break :blk tok.value.?;
-//             },
-//             else => unreachable,
-//         };
-//
-//         while (true) {
-//             tok = self.peek();
-//             const (lbp, rbp): ?struct { u8, u8 } = switch (tok.kind) {
-//                 .plus, .minus => .{ 10, 11 },
-//                 .star, .slash => .{ 20, 21 },
-//                 else => null,
-//             };
-//             if (lbp == null or lbp.? < min_bp) break;
-//
-//             self.advance();
-//             const rhs = self.parse_expression(rbp.?);
-//
-//             lhs = switch (tok.kind) {
-//                 .plus => lhs + rhs,
-//                 .minus => lhs - rhs,
-//                 .star => lhs * rhs,
-//                 .slash => lhs / rhs,
-//                 else => unreachable,
-//             };
-//         }
-//
-//         return lhs;
-//     }
-// };
-//
-// pub fn main() !void {
-//     const input = "4*5+3";
-//     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-//     defer _ = gpa.deinit();
-//     const allocator = gpa.allocator();
-//
-//     const tokens = try tokenize(input, allocator);
-//     defer allocator.free(tokens);
-//
-//     var parser = Parser{ .tokens = tokens, .index = 0 };
-//     const result = parser.parse_expression(0);
-//
-//     std.debug.print("Result of {s} = {}\n", .{ input, result });
-// }
-//
-//
-//
-//
-//
-// const std = @import("std");
-//
-// pub const TokenType = enum {
-//     number,
-//     plus,
-//     minus,
-//     star,
-//     slash,
-//     lparen,
-//     rparen,
-//     eof,
-// };
-//
-// pub const Token = struct {
-//     kind: TokenType,
-//     value: ?i64 = null,
-// };
-//
-// pub fn tokenize(input: []const u8, allocator: std.mem.Allocator) ![]Token {
-//     var list = std.ArrayList(Token).init(allocator);
-//     var i: usize = 0;
-//
-//     while (i < input.len) {
-//         const c = input[i];
-//         switch (c) {
-//             '0'...'9' => {
-//                 var start = i;
-//                 while (i < input.len and input[i] >= '0' and input[i] <= '9') : (i += 1) {}
-//                 const num_str = input[start..i];
-//                 const val = try std.fmt.parseInt(i64, num_str, 10);
-//                 try list.append(Token{ .kind = .number, .value = val });
-//                 continue;
-//             },
-//             '+' => try list.append(Token{ .kind = .plus }),
-//             '-' => try list.append(Token{ .kind = .minus }),
-//             '*' => try list.append(Token{ .kind = .star }),
-//             '/' => try list.append(Token{ .kind = .slash }),
-//             '(' => try list.append(Token{ .kind = .lparen }),
-//             ')' => try list.append(Token{ .kind = .rparen }),
-//             ' ', '\t', '\n' => {},
-//             else => return error.InvalidCharacter,
-//         }
-//         i += 1;
-//     }
-//     try list.append(Token{ .kind = .eof });
-//     return list.toOwnedSlice();
-// }
-//
-// pub const Parser = struct {
-//     tokens: []const Token,
-//     index: usize,
-//
-//     fn peek(self: *Parser) Token {
-//         return self.tokens[self.index];
-//     }
-//
-//     fn advance(self: *Parser) void {
-//         if (self.index < self.tokens.len - 1) self.index += 1;
-//     }
-//
-//     fn parse_expression(self: *Parser, min_bp: u8) i64 {
-//         var tok = self.peek();
-//         var lhs: i64 = switch (tok.kind) {
-//             .number => blk: {
-//                 self.advance();
-//                 break :blk tok.value.?;
-//             },
-//             .lparen => blk: {
-//                 self.advance(); // consume '('
-//                 const expr = self.parse_expression(0);
-//                 if (self.peek().kind != .rparen) @panic("missing closing parenthesis");
-//                 self.advance(); // consume ')'
-//                 break :blk expr;
-//             },
-//             else => @panic("unexpected token in prefix"),
-//         };
-//
-//         while (true) {
-//             tok = self.peek();
-//             const (lbp, rbp): ?struct { u8, u8 } = switch (tok.kind) {
-//                 .plus, .minus => .{ 10, 11 },
-//                 .star, .slash => .{ 20, 21 },
-//                 else => null,
-//             };
-//             if (lbp == null or lbp.? < min_bp) break;
-//
-//             self.advance();
-//             const rhs = self.parse_expression(rbp.?);
-//
-//             lhs = switch (tok.kind) {
-//                 .plus => lhs + rhs,
-//                 .minus => lhs - rhs,
-//                 .star => lhs * rhs,
-//                 .slash => lhs / rhs,
-//                 else => unreachable,
-//             };
-//         }
-//
-//         return lhs;
-//     }
-// };
-//
-// pub fn main() !void {
-//     const input = "(4*5)+3";
-//     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-//     defer _ = gpa.deinit();
-//     const allocator = gpa.allocator();
-//
-//     const tokens = try tokenize(input, allocator);
-//     defer allocator.free(tokens);
-//
-//     var parser = Parser{ .tokens = tokens, .index = 0 };
-//     const result = parser.parse_expression(0);
-//
-//     std.debug.print("Result of {s} = {}\n", .{ input, result });
-// }
