@@ -1,0 +1,7 @@
+pub fn main() void {
+    const cody = 25;
+}
+
+fn bob() i32 {
+    const nice = 30;
+}
