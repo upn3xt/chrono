@@ -51,7 +51,7 @@ pub fn walk(nodes: []ASTNode, module: llvm.LLVMModuleRef, context: llvm.LLVMCont
                     for (body) |b| {
                         switch (b.kind) {
                             .VariableDeclaration => {
-                                try createVariable(node, context, builder);
+                                try createVariable(b, context, builder);
                             },
                             else => unreachable,
                         }
@@ -81,6 +81,7 @@ pub fn createVariable(node: ASTNode, context: llvm.LLVMContextRef, builder: llvm
         .Int => {
             const i32_type = llvm.LLVMInt32TypeInContext(context);
             const variable = llvm.LLVMBuildAlloca(builder, i32_type, null_name.ptr);
+            // defer _ = llvm.LLVMBuildFree(builder, variable.?);
             if (varvar.expression) |exp| {
                 const raw_value = exp.data.NumberLiteral.value;
                 const value = llvm.LLVMConstInt(i32_type, @intCast(raw_value), 0);
