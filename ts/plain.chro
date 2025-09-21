@@ -1,8 +1,8 @@
 pub fn main() void {
-    const x = return3();
+    const x = returnme();
 }
 
-fn return3() int {
+fn returnme() int {
     return 1 + 2;
 }
 

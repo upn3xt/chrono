@@ -42,7 +42,7 @@ pub fn walk(nodes: []ASTNode, module: llvm.LLVMModuleRef, context: llvm.LLVMCont
                 if (std.mem.eql(u8, name, "main")) {
                     const entry_bb = llvm.LLVMAppendBasicBlock(fun, "entry");
                     const builder = llvm.LLVMCreateBuilderInContext(context);
-                    defer llvm.LLVMDisposeBuilder(builder);
+                    // defer llvm.LLVMDisposeBuilder(builder);
 
                     llvm.LLVMPositionBuilderAtEnd(builder, entry_bb);
 
@@ -58,9 +58,10 @@ pub fn walk(nodes: []ASTNode, module: llvm.LLVMModuleRef, context: llvm.LLVMCont
                     const ret_val = llvm.LLVMConstInt(i32_type, 0, 0);
                     _ = llvm.LLVMBuildRet(builder, ret_val);
                 } else {
+                    const func = llvm.LLVMAppendBasicBlock(fun, name_null.ptr);
                     const builder = llvm.LLVMCreateBuilderInContext(context);
-                    defer llvm.LLVMDisposeBuilder(builder);
 
+                    llvm.LLVMPositionBuilderAtEnd(builder, func);
                     for (body) |b| {
                         switch (b.kind) {
                             .VariableDeclaration => {
@@ -88,13 +89,13 @@ pub fn createVariable(node: ASTNode, context: llvm.LLVMContextRef, builder: llvm
     }
 
     const varvar = node.data.VariableDeclaration;
-    const null_name = try std.mem.concat(std.heap.page_allocator, u8, &[_][]const u8{ varvar.name, "\x00" });
-
     switch (varvar.var_type) {
         .Int => {
             const i32_type = llvm.LLVMInt32TypeInContext(context);
-            const variable = llvm.LLVMBuildAlloca(builder, i32_type, null_name.ptr);
-            // defer _ = llvm.LLVMBuildFree(builder, variable.?);
+            var name_buffer: [64]u8 = undefined;
+            _ = @memcpy(name_buffer[0..varvar.name.len], varvar.name);
+            name_buffer[varvar.name.len] = 0; // null terminate
+            const variable = llvm.LLVMBuildAlloca(builder, i32_type, &name_buffer[0]);
             if (varvar.expression) |exp| {
                 const raw_value = exp.data.NumberLiteral.value;
                 const value = llvm.LLVMConstInt(i32_type, @intCast(raw_value), 0);

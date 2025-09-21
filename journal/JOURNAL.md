@@ -278,3 +278,9 @@ Right now, I did a quick clean up on the repository and on the main file. Since 
 There's still awesome things to do and this is just the very very beginning. It's exciting and meh. Means more work too but it's alright. There's still a lot 
 to clean but I'll do that with time and when proceeding to the next thing, I will talk about it. Maybe re-assignments and function definitions are the 
 next step.
+
+
+## More than just main! 
+
+Another update on the LLVM IR generation journey. Now it can produce functions! Not yet using it.. but it is something! I need to learn LLVM IR tho. It's 
+hard having to figure out things like this. Allot of segfaults happened even at compile time(bruh).

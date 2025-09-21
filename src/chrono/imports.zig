@@ -3,7 +3,6 @@ pub const Lexer = @import("../chrono/lexer/lexer.zig");
 pub const ASTNode = @import("../chrono/ast/ast.zig");
 pub const Parser = @import("../chrono/parser/parser.zig");
 pub const Analyzer = @import("../chrono/analyzer/analyzer.zig");
-pub const Codegen = @import("../chrono/codegen/codegener.zig");
 pub const Printer = @import("../chrono/printer/printer.zig");
 pub const IndieAnalyzer = @import("../chrono/analyzer/indieanalyzer.zig");
 pub const Types = @import("../chrono/analyzer/types.zig");

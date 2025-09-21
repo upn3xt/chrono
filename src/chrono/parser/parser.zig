@@ -65,7 +65,7 @@ pub fn errorHandler(self: *Parser, err: ParserError) ParserError!void {
 }
 
 pub fn ParseTokens(self: *Parser) ![]ASTNode {
-    var node_list = std.ArrayList(ASTNode).init(self.allocator);
+    var node_list = std.array_list.Managed(ASTNode).init(self.allocator);
     while (true) {
         if (self.index >= self.tokens.len) try self.errorHandler(error.IndexOutOfBoundsError);
 
@@ -146,6 +146,9 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !ASTNode {
                 std.debug.print("{s}! Mutable: {}\n", .{ name, isMutable });
 
                 return node;
+            },
+            .IDENTIFIER => {
+                // const name =
             },
             else => try self.errorHandler(error.UnknowTokenError),
         }
@@ -285,7 +288,7 @@ pub fn parseFunctionDeclaration(self: *Parser) !ASTNode {
 
     try self.advance();
 
-    var parameters = std.ArrayList(*ASTNode).init(self.allocator);
+    var parameters = std.array_list.Managed(*ASTNode).init(self.allocator);
     while (true) {
         if (self.current_token.token_type == .SYMBOL)
             if (self.current_token.token_type.SYMBOL == .r_roundBracket) break;
@@ -329,7 +332,7 @@ pub fn parseFunctionDeclaration(self: *Parser) !ASTNode {
 
     try self.advance();
 
-    var body = std.ArrayList(ASTNode).init(self.allocator);
+    var body = std.array_list.Managed(ASTNode).init(self.allocator);
 
     while (true) {
         switch (self.current_token.token_type) {

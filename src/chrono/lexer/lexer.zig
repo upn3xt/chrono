@@ -260,8 +260,8 @@ pub fn isKeyword(_: *Lexer, word: []const u8) ?Token.TokenType {
 }
 
 pub fn tokens(self: *Lexer) ![]Token {
-    var map = std.ArrayList(Token).init(std.heap.page_allocator);
-
+    const allocator = std.heap.page_allocator;
+    var map = std.array_list.Managed(Token).init(allocator);
     while (true) {
         const token = self.next();
         _ = try map.append(token);
