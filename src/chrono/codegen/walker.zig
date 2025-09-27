@@ -26,57 +26,61 @@ pub fn buildFile(filename: []const u8, nodes: []ASTNode) !void {
 pub fn walk(nodes: []ASTNode, module: llvm.LLVMModuleRef, context: llvm.LLVMContextRef) !void {
     for (nodes) |node| {
         switch (node.kind) {
-            .FunctionDeclaration => {
-                const name = node.data.FunctionDeclaration.name;
-                const body = node.data.FunctionDeclaration.body;
-                // const parameters = node.data.FunctionDeclaration.parameters;
-                // const fn_type = node.data.FunctionDeclaration.fn_type;
-                // const value = node.data.FunctionDeclaration.value;
-
-                const i32_type = llvm.LLVMInt32TypeInContext(context);
-                const func_type = llvm.LLVMFunctionType(i32_type, null, 0, 0);
-                const name_null = try std.mem.concat(std.heap.page_allocator, u8, &[_][]const u8{ name, "\x00" });
-
-                const fun = llvm.LLVMAddFunction(module, name_null.ptr, func_type);
-                llvm.LLVMSetFunctionCallConv(fun, llvm.LLVMCCallConv);
-                if (std.mem.eql(u8, name, "main")) {
-                    const entry_bb = llvm.LLVMAppendBasicBlock(fun, "entry");
-                    const builder = llvm.LLVMCreateBuilderInContext(context);
-                    // defer llvm.LLVMDisposeBuilder(builder);
-
-                    llvm.LLVMPositionBuilderAtEnd(builder, entry_bb);
-
-                    for (body) |b| {
-                        switch (b.kind) {
-                            .VariableDeclaration => {
-                                try createVariable(b, context, builder);
-                            },
-                            else => unreachable,
-                        }
-                    }
-
-                    const ret_val = llvm.LLVMConstInt(i32_type, 0, 0);
-                    _ = llvm.LLVMBuildRet(builder, ret_val);
-                } else {
-                    const func = llvm.LLVMAppendBasicBlock(fun, name_null.ptr);
-                    const builder = llvm.LLVMCreateBuilderInContext(context);
-
-                    llvm.LLVMPositionBuilderAtEnd(builder, func);
-                    for (body) |b| {
-                        switch (b.kind) {
-                            .VariableDeclaration => {
-                                try createVariable(b, context, builder);
-                            },
-                            else => unreachable,
-                        }
-                    }
-
-                    const ret_val = llvm.LLVMConstInt(i32_type, 0, 0);
-                    _ = llvm.LLVMBuildRet(builder, ret_val);
-                }
-            },
+            .FunctionDeclaration => createFunction(node, context, module),
             else => unreachable,
         }
+    }
+}
+
+pub fn reassignment(node: ASTNode, context: llvm.LLVMContextRef, module: llvm.LLVMModuleRef) !void {}
+
+pub fn createFunction(node: ASTNode, context: llvm.LLVMContextRef, module: llvm.LLVMModuleRef) !void {
+    const name = node.data.FunctionDeclaration.name;
+    const body = node.data.FunctionDeclaration.body;
+    // const parameters = node.data.FunctionDeclaration.parameters;
+    // const fn_type = node.data.FunctionDeclaration.fn_type;
+    // const value = node.data.FunctionDeclaration.value;
+
+    const i32_type = llvm.LLVMInt32TypeInContext(context);
+    const func_type = llvm.LLVMFunctionType(i32_type, null, 0, 0);
+    const name_null = try std.mem.concat(std.heap.page_allocator, u8, &[_][]const u8{ name, "\x00" });
+
+    const fun = llvm.LLVMAddFunction(module, name_null.ptr, func_type);
+    llvm.LLVMSetFunctionCallConv(fun, llvm.LLVMCCallConv);
+    if (std.mem.eql(u8, name, "main")) {
+        const entry_bb = llvm.LLVMAppendBasicBlock(fun, "entry");
+        const builder = llvm.LLVMCreateBuilderInContext(context);
+        // defer llvm.LLVMDisposeBuilder(builder);
+
+        llvm.LLVMPositionBuilderAtEnd(builder, entry_bb);
+
+        for (body) |b| {
+            switch (b.kind) {
+                .VariableDeclaration => {
+                    try createVariable(b, context, builder);
+                },
+                else => unreachable,
+            }
+        }
+
+        const ret_val = llvm.LLVMConstInt(i32_type, 0, 0);
+        _ = llvm.LLVMBuildRet(builder, ret_val);
+    } else {
+        const func = llvm.LLVMAppendBasicBlock(fun, name_null.ptr);
+        const builder = llvm.LLVMCreateBuilderInContext(context);
+
+        llvm.LLVMPositionBuilderAtEnd(builder, func);
+        for (body) |b| {
+            switch (b.kind) {
+                .VariableDeclaration => {
+                    try createVariable(b, context, builder);
+                },
+                else => unreachable,
+            }
+        }
+
+        const ret_val = llvm.LLVMConstInt(i32_type, 0, 0);
+        _ = llvm.LLVMBuildRet(builder, ret_val);
     }
 }
 
@@ -99,7 +103,7 @@ pub fn createVariable(node: ASTNode, context: llvm.LLVMContextRef, builder: llvm
             if (varvar.expression) |exp| {
                 const raw_value = exp.data.NumberLiteral.value;
                 const value = llvm.LLVMConstInt(i32_type, @intCast(raw_value), 0);
-                _ = llvm.LLVMBuildStore(builder, value, variable);
+                if (varvar.mutable) _ = llvm.LLVMBuildStore(builder, value, variable);
             } else return error.ExpressionIsNull;
         },
         else => unreachable,

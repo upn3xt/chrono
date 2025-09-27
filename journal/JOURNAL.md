@@ -284,3 +284,9 @@ next step.
 
 Another update on the LLVM IR generation journey. Now it can produce functions! Not yet using it.. but it is something! I need to learn LLVM IR tho. It's 
 hard having to figure out things like this. Allot of segfaults happened even at compile time(bruh).
+
+
+## I'm getting lazy about this :/ 
+
+Lowkey got tired of the chrono work, not exactly, just being and talking lazy. I recently worked on another project and the same happened. I got confortable
+about the results. Maybe im tired but whatever, going to work on other stuff and then comeback to this. Working on assignment.

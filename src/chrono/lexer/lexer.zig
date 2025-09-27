@@ -9,11 +9,13 @@ const Lexer = @This();
 /// The whole file content in a "string"
 input: []const u8,
 pos: usize,
+line: usize = 0,
 
 pub fn init(input: []const u8) Lexer {
     return Lexer{
         .input = input,
         .pos = 0,
+        .line = 0,
     };
 }
 
@@ -109,7 +111,6 @@ pub fn next(self: *Lexer) Token {
         }
 
         const pontuation = self.whichPontuation(current_char) orelse return Token{ .lexeme = "", .token_type = .EOF };
-
         const lexeme = self.input[start_pos..self.pos];
         return Token{ .token_type = pontuation, .lexeme = lexeme };
     }
@@ -196,8 +197,12 @@ pub fn whichSyboml(_: *Lexer, char: u8) ?Token.TokenType {
     }
 }
 
-pub fn isPontuation(_: *Lexer, char: u8) bool {
-    if (char == ';' or char == ',' or char == '?' or char == '!' or char == '.' or char == ':') {
+pub fn isPontuation(self: *Lexer, char: u8) bool {
+    if (char == ';') {
+        self.line += 1;
+        return true;
+    }
+    if (char == ',' or char == '?' or char == '!' or char == '.' or char == ':') {
         return true;
     } else return false;
 }
