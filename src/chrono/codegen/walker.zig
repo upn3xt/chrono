@@ -32,7 +32,19 @@ pub fn walk(nodes: []ASTNode, module: llvm.LLVMModuleRef, context: llvm.LLVMCont
     }
 }
 
-pub fn reassignment(node: ASTNode, context: llvm.LLVMContextRef, module: llvm.LLVMModuleRef) !void {}
+/// OMG LSPs are bad boohoo
+pub fn cap() !void {}
+
+pub fn functionCall(context: llvm.LLVMContextRef, builder: llvm.LLVMBuilderRef, func: llvm.LLVMValueRef) !void {
+    // const func = node.data.FunctionReference;
+
+    const i32_type = llvm.LLVMInt32TypeInContext(context);
+    const call = llvm.LLVMBuildCall2(builder, i32_type, func, null, 0, "calltmp");
+
+    _ = llvm.LLVMBuildRet(builder, call);
+}
+
+// pub fn reassignment(node: astnode, context: llvm.llvmcontextref, module: llvm.llvmmoduleref) !void {}
 
 pub fn createFunction(node: ASTNode, context: llvm.LLVMContextRef, module: llvm.LLVMModuleRef) !void {
     const name = node.data.FunctionDeclaration.name;

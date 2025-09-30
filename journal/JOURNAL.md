@@ -290,3 +290,9 @@ hard having to figure out things like this. Allot of segfaults happened even at 
 
 Lowkey got tired of the chrono work, not exactly, just being and talking lazy. I recently worked on another project and the same happened. I got confortable
 about the results. Maybe im tired but whatever, going to work on other stuff and then comeback to this. Working on assignment.
+
+
+## ITS BEEN A WHILE SINCE CODE SUM BUT GOT SOME NEWS 
+
+Well, tonight I decided the fate of the chronolang. It's not ready yet to have implemented the concepts of classes, RAII and etc. First of all, to be a language 
+that at the very least can do logic. I will have a time to study more about certain things like RAII and auto clean ups. Along will come syntax specifications.
