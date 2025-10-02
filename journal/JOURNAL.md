@@ -296,3 +296,10 @@ about the results. Maybe im tired but whatever, going to work on other stuff and
 
 Well, tonight I decided the fate of the chronolang. It's not ready yet to have implemented the concepts of classes, RAII and etc. First of all, to be a language 
 that at the very least can do logic. I will have a time to study more about certain things like RAII and auto clean ups. Along will come syntax specifications.
+
+
+## Back on it, now everything is broken 
+
+Today I got back on chrono development and man let me tell ya- Everything suddenly doesn't work. The indie analyzer genuinely sucks for working so well and yet 
+being so fucking ass. Now assignment compiles but I'm not sure if it works but yea. The parser suddenly sucks at parsing and had to try many things just to reach the same output. Even now I had to comment things just to make it work. How do you declare a variable one time and still get a redeclaration error??? Fucking 
+shit.

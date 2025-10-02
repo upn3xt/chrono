@@ -7,13 +7,7 @@ const Object = Import.Object;
 
 const IndieAnalyzer = @This();
 
-symbols: std.StringHashMap(Object),
-
-pub fn init(symbols: std.StringHashMap(Object)) IndieAnalyzer {
-    return IndieAnalyzer{ .symbols = symbols };
-}
-
-pub fn analyzeVariableDeclaration(self: *IndieAnalyzer, node: ASTNode) !void {
+pub fn analyzeVariableDeclaration(node: ASTNode, symbols: *std.StringHashMap(Object)) !void {
     const name = node.data.VariableDeclaration.name;
 
     const exp = node.data.VariableDeclaration.expression;
@@ -41,21 +35,21 @@ pub fn analyzeVariableDeclaration(self: *IndieAnalyzer, node: ASTNode) !void {
         else => return error.InvalidType,
     }
 
-    if (self.symbols.get(name)) |_| {
-        std.debug.print("Variable already declared.\n", .{});
-        return error.RedeclarationError;
-    }
+    // if (symbols.get(name)) |_| {
+    //     std.debug.print("Variable `{s}` already declared.\n", .{name});
+    //     return error.RedeclarationError;
+    // }
     if (var_type != exp_type) return error.TypeMismatch;
 
-    try self.symbols.put(name, .{ .identifier = name, .mutable = mutable, .obtype = exp_type });
+    try symbols.put(name, .{ .identifier = name, .mutable = mutable, .obtype = exp_type });
 }
 
-pub fn analyzeAssignment(self: *IndieAnalyzer, node: ASTNode) !void {
+pub fn analyzeAssignment(node: ASTNode, symbols: *std.StringHashMap(Object)) !void {
     const asg_type = node.data.Assignment.asg_type;
     const variable = node.data.Assignment.variable;
 
     const varvar = variable.data.VariableReference;
-    if (self.symbols.get(varvar.name)) |ob| {
+    if (symbols.get(varvar.name)) |ob| {
         if (ob.mutable == true) {
             if (ob.obtype != asg_type) {
                 std.debug.print("Type TypeMismatch!\n", .{});
@@ -72,7 +66,11 @@ pub fn analyzeAssignment(self: *IndieAnalyzer, node: ASTNode) !void {
     }
 }
 
-pub fn analyzeFunctionDeclaration(self: *IndieAnalyzer, node: ASTNode) !void {
+pub fn analyzeFunctionDeclaration(node: ASTNode, symbols: *std.StringHashMap(Object)) !void {
+    if (node.kind != .FunctionDeclaration) {
+        std.debug.print("Expected FunctionDeclaration node got {}\n", .{node.kind});
+        return error.UnexpectedNodeType;
+    }
     switch (node.kind) {
         .FunctionDeclaration => {
             const name = node.data.FunctionDeclaration.name;
@@ -85,17 +83,17 @@ pub fn analyzeFunctionDeclaration(self: *IndieAnalyzer, node: ASTNode) !void {
 
             const value = node.data.FunctionDeclaration.value;
 
-            if (self.symbols.get(name)) |_| {
+            if (symbols.get(name)) |_| {
                 return error.FunctionRedeclarationError;
             }
 
             for (body) |b| {
                 switch (b.kind) {
                     .VariableDeclaration => {
-                        try self.analyzeFunctionDeclaration(b);
+                        try analyzeVariableDeclaration(b, symbols);
                     },
                     .Assignment => {
-                        try self.analyzeAssignment(b);
+                        try analyzeAssignment(b, symbols);
                     },
                     else => unreachable,
                 }
@@ -121,6 +119,6 @@ pub fn analyzeFunctionDeclaration(self: *IndieAnalyzer, node: ASTNode) !void {
                 }
             }
         },
-        else => unreachable,
+        else => {},
     }
 }

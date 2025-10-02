@@ -1,5 +1,6 @@
 pub fn main() void {
-    const cody = 25;
+    var y = 25;
+    y = 20;
 }
 
 fn bob() i32 {

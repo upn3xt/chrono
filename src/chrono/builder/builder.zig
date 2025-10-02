@@ -49,10 +49,8 @@ pub fn build() !void {
     const tokens = try lexer.tokens();
     std.debug.print("Tokenization done.\n", .{});
 
-    const sym = std.StringHashMap(Object).init(allocator);
-
     std.debug.print("Starting Parsing...\n", .{});
-    var parser = Parser.init(allocator, tokens, sym);
+    var parser = Parser.init(allocator, tokens);
     const nodes = try parser.ParseTokens();
 
     std.debug.print("Parsing done.\n", .{});
@@ -63,11 +61,11 @@ pub fn build() !void {
 
     std.debug.print("Emition done!\n", .{});
 
-    try compileObject(allocator);
+    // try compileObject(allocator);
 }
 
 pub fn compileObject(allocator: std.mem.Allocator) !void {
-    const clangcommand = try std.fmt.allocPrint(allocator, "clang ../../../output/main.o -o main", .{});
+    const clangcommand = try std.fmt.allocPrint(allocator, "clang output/main.o -o main", .{});
     // const clangcommand = try std.fmt.allocPrint(allocator, "clang", .{});
     var process = std.process.Child.init(&[1][]const u8{clangcommand}, allocator);
     const result = try process.spawnAndWait();

@@ -7,6 +7,7 @@ const Type = Import.Types.Types;
 const IndieAnalyzer = Import.IndieAnalyzer;
 const Object = Import.Object;
 
+var symbols = std.StringHashMap(Object).init(std.heap.page_allocator);
 const ExpectedTokenError = error{
     ExpectedIdentifierError,
     ExpectedPuntuactionError,
@@ -25,10 +26,14 @@ allocator: std.mem.Allocator,
 tokens: []Token,
 index: usize = 0,
 current_token: Token,
-analyzer: IndieAnalyzer,
 
-pub fn init(allocator: std.mem.Allocator, tokens: []Token, symbols: std.StringHashMap(Object)) Parser {
-    return Parser{ .allocator = allocator, .tokens = tokens, .index = 0, .current_token = tokens[0], .analyzer = .init(symbols) };
+pub fn init(allocator: std.mem.Allocator, tokens: []Token) Parser {
+    return Parser{
+        .allocator = allocator,
+        .tokens = tokens,
+        .index = 0,
+        .current_token = tokens[0],
+    };
 }
 
 pub fn advance(self: *Parser) !void {
@@ -76,12 +81,13 @@ pub fn ParseTokens(self: *Parser) ![]ASTNode {
                         var isMutable = false;
                         if (key == .var_kw) isMutable = true;
                         const var_node = try self.parseVariableDeclaration(isMutable);
-                        try self.analyzer.analyzeVariableDeclaration(var_node);
+                        try IndieAnalyzer.analyzeVariableDeclaration(var_node, &symbols);
                         try node_list.append(var_node);
+                        std.debug.print("added\n", .{});
                     },
                     .function_kw => {
                         const fn_node = try self.parseFunctionDeclaration();
-                        // try self.analyzer.analyzeFunctionDeclaration(fn_node);
+                        try IndieAnalyzer.analyzeFunctionDeclaration(fn_node, &symbols);
                         try node_list.append(fn_node);
                     },
                     .pub_kw => try self.advance(),
@@ -90,7 +96,7 @@ pub fn ParseTokens(self: *Parser) ![]ASTNode {
             },
             .IDENTIFIER => {
                 const id_node = try self.parseAssignment();
-                try self.analyzer.analyzeAssignment(id_node);
+                try IndieAnalyzer.analyzeAssignment(id_node, &symbols);
                 try node_list.append(id_node);
             },
             .COMMENT => try self.advance(),
@@ -209,6 +215,7 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !ASTNode {
         } } };
 
         std.debug.print("{s}! Mutable: {}\n", .{ name, isMutable });
+
         return node;
     } else {
         try self.errorHandler(error.UnexpectedTokenError);
@@ -223,10 +230,13 @@ pub fn parseAssignment(self: *Parser) !ASTNode {
     if (self.current_token.token_type != .IDENTIFIER) try self.errorHandler(error.ExpectedIdentifierError);
     const name = self.current_token.lexeme;
     const var_node = try self.allocator.create(ASTNode);
-    if (self.analyzer.symbols.get(name)) |ob| {
+
+    if (symbols.get(name)) |ob| {
         if (ob.mutable != null)
             var_node.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = name, .mutable = ob.mutable.? } } };
-    } else return error.UndefinedVariableError;
+    } else {
+        return error.UndefinedVariableError;
+    }
 
     try self.advance();
 
@@ -342,6 +352,7 @@ pub fn parseFunctionDeclaration(self: *Parser) !ASTNode {
                         var isMutable = false;
                         if (key == .var_kw) isMutable = true;
                         const var_node = try self.parseVariableDeclaration(isMutable);
+                        try IndieAnalyzer.analyzeVariableDeclaration(var_node, &symbols);
                         try body.append(var_node);
                     },
                     .return_kw => {
@@ -354,6 +365,7 @@ pub fn parseFunctionDeclaration(self: *Parser) !ASTNode {
             },
             .IDENTIFIER => {
                 const id_node = try self.parseAssignment();
+                try IndieAnalyzer.analyzeAssignment(id_node, &symbols);
                 try body.append(id_node);
             },
             .SYMBOL => |s| {

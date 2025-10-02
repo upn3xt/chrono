@@ -1,0 +1,6 @@
+fn main() void {
+var t = 20;
+const y = 20;
+t = 2000;
+  // y = 10;
+}
