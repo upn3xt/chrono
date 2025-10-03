@@ -1,6 +1,9 @@
 fn main() void {
-var t = 20;
-const y = 20;
-t = 2000;
-  // y = 10;
+  var t = 20;
+  const y = 20;
+  t = 2000;
+}
+
+fn bro() void {
+    const x = 90;
 }

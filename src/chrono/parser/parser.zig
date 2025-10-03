@@ -7,7 +7,8 @@ const Type = Import.Types.Types;
 const IndieAnalyzer = Import.IndieAnalyzer;
 const Object = Import.Object;
 
-var symbols = std.StringHashMap(Object).init(std.heap.page_allocator);
+var vars = std.StringHashMap(Object).init(std.heap.page_allocator);
+var funcs = std.StringHashMap(Object).init(std.heap.page_allocator);
 const ExpectedTokenError = error{
     ExpectedIdentifierError,
     ExpectedPuntuactionError,
@@ -81,13 +82,13 @@ pub fn ParseTokens(self: *Parser) ![]ASTNode {
                         var isMutable = false;
                         if (key == .var_kw) isMutable = true;
                         const var_node = try self.parseVariableDeclaration(isMutable);
-                        try IndieAnalyzer.analyzeVariableDeclaration(var_node, &symbols);
+                        try IndieAnalyzer.analyzeVariableDeclaration(var_node, &vars);
                         try node_list.append(var_node);
                         std.debug.print("added\n", .{});
                     },
                     .function_kw => {
                         const fn_node = try self.parseFunctionDeclaration();
-                        try IndieAnalyzer.analyzeFunctionDeclaration(fn_node, &symbols);
+                        try IndieAnalyzer.analyzeFunctionDeclaration(fn_node, &funcs);
                         try node_list.append(fn_node);
                     },
                     .pub_kw => try self.advance(),
@@ -95,8 +96,8 @@ pub fn ParseTokens(self: *Parser) ![]ASTNode {
                 }
             },
             .IDENTIFIER => {
-                const id_node = try self.parseAssignment();
-                try IndieAnalyzer.analyzeAssignment(id_node, &symbols);
+                const id_node = try self.parseAssignment(&vars);
+                try IndieAnalyzer.analyzeAssignment(id_node, &vars);
                 try node_list.append(id_node);
             },
             .COMMENT => try self.advance(),
@@ -223,7 +224,7 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !ASTNode {
     return error.OperationVarDecFailed;
 }
 
-pub fn parseAssignment(self: *Parser) !ASTNode {
+pub fn parseAssignment(self: *Parser, syms: *std.StringHashMap(Object)) !ASTNode {
     var asgtype: Type = undefined;
     const exp = try self.allocator.create(ASTNode);
 
@@ -231,7 +232,7 @@ pub fn parseAssignment(self: *Parser) !ASTNode {
     const name = self.current_token.lexeme;
     const var_node = try self.allocator.create(ASTNode);
 
-    if (symbols.get(name)) |ob| {
+    if (syms.get(name)) |ob| {
         if (ob.mutable != null)
             var_node.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = name, .mutable = ob.mutable.? } } };
     } else {
@@ -343,6 +344,8 @@ pub fn parseFunctionDeclaration(self: *Parser) !ASTNode {
     try self.advance();
 
     var body = std.array_list.Managed(ASTNode).init(self.allocator);
+    var varsbody = std.StringHashMap(Object).init(std.heap.page_allocator);
+    // defer varsbody.deinit();
 
     while (true) {
         switch (self.current_token.token_type) {
@@ -352,7 +355,7 @@ pub fn parseFunctionDeclaration(self: *Parser) !ASTNode {
                         var isMutable = false;
                         if (key == .var_kw) isMutable = true;
                         const var_node = try self.parseVariableDeclaration(isMutable);
-                        try IndieAnalyzer.analyzeVariableDeclaration(var_node, &symbols);
+                        try IndieAnalyzer.analyzeVariableDeclaration(var_node, &varsbody);
                         try body.append(var_node);
                     },
                     .return_kw => {
@@ -364,8 +367,8 @@ pub fn parseFunctionDeclaration(self: *Parser) !ASTNode {
                 }
             },
             .IDENTIFIER => {
-                const id_node = try self.parseAssignment();
-                try IndieAnalyzer.analyzeAssignment(id_node, &symbols);
+                const id_node = try self.parseAssignment(&varsbody);
+                try IndieAnalyzer.analyzeAssignment(id_node, &varsbody);
                 try body.append(id_node);
             },
             .SYMBOL => |s| {

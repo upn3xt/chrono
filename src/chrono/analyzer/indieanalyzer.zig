@@ -35,10 +35,10 @@ pub fn analyzeVariableDeclaration(node: ASTNode, symbols: *std.StringHashMap(Obj
         else => return error.InvalidType,
     }
 
-    // if (symbols.get(name)) |_| {
-    //     std.debug.print("Variable `{s}` already declared.\n", .{name});
-    //     return error.RedeclarationError;
-    // }
+    if (symbols.contains(name)) {
+        std.debug.print("Variable `{s}` already declared.\n", .{name});
+        return error.RedeclarationError;
+    }
     if (var_type != exp_type) return error.TypeMismatch;
 
     try symbols.put(name, .{ .identifier = name, .mutable = mutable, .obtype = exp_type });
@@ -118,6 +118,8 @@ pub fn analyzeFunctionDeclaration(node: ASTNode, symbols: *std.StringHashMap(Obj
                     }
                 }
             }
+
+            try symbols.put(name, .{ .identifier = name, .mutable = false, .obtype = fn_type });
         },
         else => {},
     }

@@ -9,8 +9,6 @@ const llvm = @cImport({
     @cInclude("llvm-c/TargetMachine.h");
 });
 
-var vars = std.StringHashMap(llvm.LLVMValueRef).init(std.heap.page_allocator);
-
 pub fn buildFile(filename: []const u8, nodes: []ASTNode) !void {
     const context = llvm.LLVMContextCreate();
     defer llvm.LLVMContextDispose(context);
@@ -29,10 +27,11 @@ pub fn buildFile(filename: []const u8, nodes: []ASTNode) !void {
 }
 /// Walks through the AST nodes and emits an object
 pub fn walk(nodes: []ASTNode, module: llvm.LLVMModuleRef, context: llvm.LLVMContextRef, builder: llvm.LLVMBuilderRef) !void {
+    var global = std.StringHashMap(llvm.LLVMValueRef).init(std.heap.page_allocator);
     for (nodes) |node| {
         switch (node.kind) {
             .FunctionDeclaration => try createFunction(node, context, module, builder),
-            .VariableDeclaration => try createVariable(node, context, builder),
+            .VariableDeclaration => try createVariable(node, context, builder, &global),
             else => unreachable,
         }
     }
@@ -47,7 +46,7 @@ pub fn functionCall(context: llvm.LLVMContextRef, builder: llvm.LLVMBuilderRef, 
     _ = llvm.LLVMBuildRet(builder, call);
 }
 
-pub fn reassignment(node: ASTNode, context: llvm.LLVMContextRef, builder: llvm.LLVMBuilderRef) !void {
+pub fn reassignment(node: ASTNode, context: llvm.LLVMContextRef, builder: llvm.LLVMBuilderRef, map: *std.StringHashMap(llvm.LLVMValueRef)) !void {
     if (node.kind != .Assignment) {
         std.debug.print("{}\n", .{node.kind});
         return error.ExpectedAssignmentNode;
@@ -66,7 +65,7 @@ pub fn reassignment(node: ASTNode, context: llvm.LLVMContextRef, builder: llvm.L
             const value = asg.expression.data.NumberLiteral.value;
 
             const new_val = llvm.LLVMConstInt(i32_type, @intCast(value), 0);
-            const variable = vars.get(varvarx.name);
+            const variable = map.get(varvarx.name) orelse return error.VariableNull;
             if (variable) |valueref|
                 _ = llvm.LLVMBuildStore(builder, new_val, valueref);
         },
@@ -81,6 +80,7 @@ pub fn createFunction(node: ASTNode, context: llvm.LLVMContextRef, module: llvm.
     // const fn_type = node.data.FunctionDeclaration.fn_type;
     // const value = node.data.FunctionDeclaration.value;
 
+    var vars = std.StringHashMap(llvm.LLVMValueRef).init(std.heap.page_allocator);
     const i32_type = llvm.LLVMInt32TypeInContext(context);
     const func_type = llvm.LLVMFunctionType(i32_type, null, 0, 0);
     const name_null = try std.mem.concat(std.heap.page_allocator, u8, &[_][]const u8{ name, "\x00" });
@@ -94,11 +94,8 @@ pub fn createFunction(node: ASTNode, context: llvm.LLVMContextRef, module: llvm.
 
         for (body) |b| {
             switch (b.kind) {
-                .VariableDeclaration,
-                => {
-                    try createVariable(b, context, builder);
-                },
-                .Assignment => try reassignment(b, context, builder),
+                .VariableDeclaration => try createVariable(b, context, builder, &vars),
+                .Assignment => try reassignment(b, context, builder, &vars),
                 else => unreachable,
             }
         }
@@ -111,8 +108,8 @@ pub fn createFunction(node: ASTNode, context: llvm.LLVMContextRef, module: llvm.
         llvm.LLVMPositionBuilderAtEnd(builder, func);
         for (body) |b| {
             switch (b.kind) {
-                .VariableDeclaration => try createVariable(b, context, builder),
-                .Assignment => try reassignment(b, context, builder),
+                .VariableDeclaration => try createVariable(b, context, builder, &vars),
+                .Assignment => try reassignment(b, context, builder, &vars),
                 else => unreachable,
             }
         }
@@ -124,7 +121,7 @@ pub fn createFunction(node: ASTNode, context: llvm.LLVMContextRef, module: llvm.
 
 pub fn createMain() !void {}
 
-pub fn createVariable(node: ASTNode, context: llvm.LLVMContextRef, builder: llvm.LLVMBuilderRef) !void {
+pub fn createVariable(node: ASTNode, context: llvm.LLVMContextRef, builder: llvm.LLVMBuilderRef, map: *std.StringHashMap(llvm.LLVMValueRef)) !void {
     if (node.kind != .VariableDeclaration) {
         std.debug.print("{}\n", .{node.kind});
         return error.ExpectedVariableDeclarationNode;
@@ -139,12 +136,11 @@ pub fn createVariable(node: ASTNode, context: llvm.LLVMContextRef, builder: llvm
             name_buffer[varvar.name.len] = 0; // null terminate
             const variable = llvm.LLVMBuildAlloca(builder, i32_type, &name_buffer[0]);
 
-            try vars.put(&name_buffer, variable);
-
             if (varvar.expression) |exp| {
                 const raw_value = exp.data.NumberLiteral.value;
                 const value = llvm.LLVMConstInt(i32_type, @intCast(raw_value), 0);
                 if (varvar.mutable) _ = llvm.LLVMBuildStore(builder, value, variable);
+                try map.put(varvar.name, variable);
             } else return error.ExpressionIsNull;
         },
         else => unreachable,

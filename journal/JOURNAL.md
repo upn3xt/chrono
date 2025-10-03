@@ -303,3 +303,10 @@ that at the very least can do logic. I will have a time to study more about cert
 Today I got back on chrono development and man let me tell ya- Everything suddenly doesn't work. The indie analyzer genuinely sucks for working so well and yet 
 being so fucking ass. Now assignment compiles but I'm not sure if it works but yea. The parser suddenly sucks at parsing and had to try many things just to reach the same output. Even now I had to comment things just to make it work. How do you declare a variable one time and still get a redeclaration error??? Fucking 
 shit.
+
+
+## Entering scope resolution fields
+
+Fixed the redeclaration error. It simply needed different symbol hashmaps. This was good, so confusing but finally makes sense and the parser's still evolving
+through this process. Nice, also now ""tying object lifetimes"" to the scope now. At the very least is what I'm trying to say/do. As I proceed more refactoring 
+will be needed because this codebase is to laugh at, but being serious I liked this error resolution.
