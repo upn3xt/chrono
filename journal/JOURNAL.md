@@ -310,3 +310,11 @@ shit.
 Fixed the redeclaration error. It simply needed different symbol hashmaps. This was good, so confusing but finally makes sense and the parser's still evolving
 through this process. Nice, also now ""tying object lifetimes"" to the scope now. At the very least is what I'm trying to say/do. As I proceed more refactoring 
 will be needed because this codebase is to laugh at, but being serious I liked this error resolution.
+
+
+## Hashmaps, ArrayLists and wasted allocators
+
+Right now I'm attemping to get printf to be a thing in my language. To print stuff and even have string formating, but I gotta be honest this is getting too 
+messy to keep up. I have like 20 flexible datastructures duck taping the project and most of them are wasting memory with page allocators instead of fba or GPA
+ones. Also having to take care of all of it is mentally challenging and I get desmotivated pretty quickly but later on I might finish it or just run into a 
+problem with a simple resolution. That's the routine lol. Just saving this progress tho-

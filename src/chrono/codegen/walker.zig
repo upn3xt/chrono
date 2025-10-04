@@ -9,6 +9,14 @@ const llvm = @cImport({
     @cInclude("llvm-c/TargetMachine.h");
 });
 
+const Function = struct {
+    func: llvm.LLVMValueRef,
+    args: llvm.LLVMValueRef,
+    args_len: i32,
+};
+
+var functionsmap = std.StringHashMap(Function).init(std.heap.page_allocator);
+
 pub fn buildFile(filename: []const u8, nodes: []ASTNode) !void {
     const context = llvm.LLVMContextCreate();
     defer llvm.LLVMContextDispose(context);
@@ -37,11 +45,12 @@ pub fn walk(nodes: []ASTNode, module: llvm.LLVMModuleRef, context: llvm.LLVMCont
     }
 }
 
-pub fn functionCall(context: llvm.LLVMContextRef, builder: llvm.LLVMBuilderRef, func: llvm.LLVMValueRef) !void {
-    // const func = node.data.FunctionReference;
+pub fn functionCall(node: ASTNode, context: llvm.LLVMContextRef, builder: llvm.LLVMBuilderRef) !void {
+    const func = node.data.FunctionReference;
 
+    const funfun = functionsmap.get(func.name) orelse return error.FunctionNull;
     const i32_type = llvm.LLVMInt32TypeInContext(context);
-    const call = llvm.LLVMBuildCall2(builder, i32_type, func, null, 0, "calltmp");
+    const call = llvm.LLVMBuildCall2(builder, i32_type, funfun.func, funfun.args, @intCast(funfun.args_len), "");
 
     _ = llvm.LLVMBuildRet(builder, call);
 }
@@ -76,7 +85,7 @@ pub fn reassignment(node: ASTNode, context: llvm.LLVMContextRef, builder: llvm.L
 pub fn createFunction(node: ASTNode, context: llvm.LLVMContextRef, module: llvm.LLVMModuleRef, builder: llvm.LLVMBuilderRef) !void {
     const name = node.data.FunctionDeclaration.name;
     const body = node.data.FunctionDeclaration.body;
-    // const parameters = node.data.FunctionDeclaration.parameters;
+    const parameters = node.data.FunctionDeclaration.parameters;
     // const fn_type = node.data.FunctionDeclaration.fn_type;
     // const value = node.data.FunctionDeclaration.value;
 
@@ -91,16 +100,32 @@ pub fn createFunction(node: ASTNode, context: llvm.LLVMContextRef, module: llvm.
         const entry_bb = llvm.LLVMAppendBasicBlock(fun, "entry");
 
         llvm.LLVMPositionBuilderAtEnd(builder, entry_bb);
+        var pams = std.array_list.Managed(llvm.LLVMTypeRef).init(std.heap.page_allocator);
+        if (parameters) |params| {
+            for (params) |p| {
+                switch (p.kind) {
+                    .NumberLiteral => try pams.append(llvm.LLVMInt32Type()),
+
+                    // .StringLiteral => try pams.append(llvm.string),
+                    //
+
+                    else => {},
+                }
+            }
+        }
 
         for (body) |b| {
             switch (b.kind) {
                 .VariableDeclaration => try createVariable(b, context, builder, &vars),
                 .Assignment => try reassignment(b, context, builder, &vars),
+                .FunctionReference => try functionCall(b, context, builder),
                 else => unreachable,
             }
         }
 
         const ret_val = llvm.LLVMConstInt(i32_type, 0, 0);
+
+        try functionsmap.put(name, .{ .func = fun, .args = null, .args_len = 0 });
         _ = llvm.LLVMBuildRet(builder, ret_val);
     } else {
         const func = llvm.LLVMAppendBasicBlock(fun, name_null.ptr);
@@ -115,11 +140,17 @@ pub fn createFunction(node: ASTNode, context: llvm.LLVMContextRef, module: llvm.
         }
 
         const ret_val = llvm.LLVMConstInt(i32_type, 0, 0);
+
+        try functionsmap.put(name, .{ .func = fun, .args = null, .args_len = 0 });
         _ = llvm.LLVMBuildRet(builder, ret_val);
     }
 }
 
-pub fn createMain() !void {}
+pub fn definePrintf(context: llvm.LLVMContextRef, module: llvm.LLVMModuleRef) llvm.LLVMValueRef {
+    const printf_arg_t = llvm.LLVMPointerType(llvm.LLVMInt8TypeInContext(context), 0);
+    const printf_type = llvm.LLVMFunctionType(llvm.LLVMInt32TypeInContext(context), &printf_arg_t, 1, 1); // vararg = 1
+    return llvm.LLVMAddFunction(module, "printf", printf_type);
+}
 
 pub fn createVariable(node: ASTNode, context: llvm.LLVMContextRef, builder: llvm.LLVMBuilderRef, map: *std.StringHashMap(llvm.LLVMValueRef)) !void {
     if (node.kind != .VariableDeclaration) {
