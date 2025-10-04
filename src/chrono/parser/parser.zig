@@ -232,15 +232,37 @@ pub fn parseAssignment(self: *Parser, syms: *std.StringHashMap(Object)) !ASTNode
     const name = self.current_token.lexeme;
     const var_node = try self.allocator.create(ASTNode);
 
-    if (syms.get(name)) |ob| {
-        if (ob.mutable != null)
-            var_node.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = name, .mutable = ob.mutable.? } } };
-    } else {
-        return error.UndefinedVariableError;
-    }
-
+    var_node.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = name, .mutable = true } } };
     try self.advance();
 
+    if (self.current_token.token_type == .SYMBOL) {
+        if (self.current_token.token_type.SYMBOL == .l_roundBracket) {
+            try self.advance();
+            var args = std.array_list.Managed(ASTNode).init(std.heap.page_allocator);
+            while (true) {
+                var current_token = self.current_token.token_type;
+                switch (current_token) {
+                    .STRING => {
+                        const strnode: ASTNode = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{ .value = self.current_token.lexeme } } };
+                        try args.append(strnode);
+                    },
+                    .NUMBER => {},
+                    .IDENTIFIER => {},
+                    .SYMBOL => |s| if (s == .r_roundBracket) break,
+
+                    else => unreachable,
+                }
+                current_token = self.current_token.token_type;
+            }
+
+            try self.advance();
+
+            try self.semiAndGo();
+
+            const node = ASTNode{ .kind = .FunctionReference, .data = .{ .FunctionReference = .{ .arguments = args.items, .name = name } } };
+            return node;
+        }
+    }
     if (self.current_token.token_type != .OPERATOR) return error.ExpectedOperator;
     if (self.current_token.token_type.OPERATOR != .equal) try self.errorHandler(error.ExpectedOperatorEqual);
 
@@ -277,6 +299,8 @@ pub fn parseAssignment(self: *Parser, syms: *std.StringHashMap(Object)) !ASTNode
     try self.advance();
 
     try self.semiAndGo();
+
+    if (syms.get(name)) |_| {} else return error.UndefinedVariableError;
 
     const node: ASTNode = .{ .kind = .Assignment, .data = .{ .Assignment = .{ .variable = var_node, .expression = exp, .asg_type = asgtype } } };
 

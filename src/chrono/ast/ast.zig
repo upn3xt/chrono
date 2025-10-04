@@ -45,7 +45,7 @@ data: union(NodeKind) {
         value: ?[]const u8 = null,
     },
 
-    FunctionReference: struct { name: []const u8, arguments: ?[]*ASTNode = null },
+    FunctionReference: struct { name: []const u8, arguments: ?[]ASTNode = null },
 
     Parameter: struct {
         name: []const u8,

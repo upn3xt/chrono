@@ -11,7 +11,7 @@ const llvm = @cImport({
 
 const Function = struct {
     func: llvm.LLVMValueRef,
-    args: llvm.LLVMValueRef,
+    args: [*c]llvm.LLVMValueRef,
     args_len: i32,
 };
 

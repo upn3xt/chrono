@@ -45,24 +45,27 @@ pub fn analyzeVariableDeclaration(node: ASTNode, symbols: *std.StringHashMap(Obj
 }
 
 pub fn analyzeAssignment(node: ASTNode, symbols: *std.StringHashMap(Object)) !void {
-    const asg_type = node.data.Assignment.asg_type;
-    const variable = node.data.Assignment.variable;
+    if (node.kind == .FunctionReference) {}
+    if (node.kind == .Assignment) {
+        const asg_type = node.data.Assignment.asg_type;
+        const variable = node.data.Assignment.variable;
 
-    const varvar = variable.data.VariableReference;
-    if (symbols.get(varvar.name)) |ob| {
-        if (ob.mutable == true) {
-            if (ob.obtype != asg_type) {
-                std.debug.print("Type TypeMismatch!\n", .{});
-                return error.TypeMismatchError;
+        const varvar = variable.data.VariableReference;
+        if (symbols.get(varvar.name)) |ob| {
+            if (ob.mutable == true) {
+                if (ob.obtype != asg_type) {
+                    std.debug.print("Type TypeMismatch!\n", .{});
+                    return error.TypeMismatchError;
+                }
+            } else {
+                std.debug.print("{}\n", .{varvar.mutable});
+                std.debug.print("Error, trying to asign value to a constant: {s}\n", .{varvar.name});
+                return error.AssignToConstantError;
             }
         } else {
-            std.debug.print("{}\n", .{varvar.mutable});
-            std.debug.print("Error, trying to asign value to a constant: {s}\n", .{varvar.name});
-            return error.AssignToConstantError;
+            std.debug.print("Variable {s} doesnt exist!\n", .{varvar.name});
+            return error.UndefinedVariable;
         }
-    } else {
-        std.debug.print("Variable {s} doesnt exist!\n", .{varvar.name});
-        return error.UndefinedVariable;
     }
 }
 
@@ -95,6 +98,7 @@ pub fn analyzeFunctionDeclaration(node: ASTNode, symbols: *std.StringHashMap(Obj
                     .Assignment => {
                         try analyzeAssignment(b, symbols);
                     },
+                    .FunctionReference => {},
                     else => unreachable,
                 }
             }
