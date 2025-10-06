@@ -8,15 +8,15 @@ const llvm = @cImport({
     @cInclude("llvm-c/Target.h");
     @cInclude("llvm-c/TargetMachine.h");
 });
-
-const Function = struct {
-    func: llvm.LLVMValueRef,
-    args: []llvm.LLVMTypeRef,
-    args_len: usize,
-};
-
-var functionsmap = std.StringHashMap(Function).init(std.heap.page_allocator);
-
+//
+// const Function = struct {
+//     func: llvm.LLVMValueRef,
+//     args: []llvm.LLVMTypeRef,
+//     args_len: usize,
+// };
+//
+// var functionsmap = std.StringHashMap(Function).init(std.heap.page_allocator);
+//
 pub fn buildFile(filename: []const u8, nodes: []ASTNode) !void {
     const context = llvm.LLVMContextCreate();
     defer llvm.LLVMContextDispose(context);
@@ -40,50 +40,41 @@ pub fn walk(nodes: []ASTNode, module: llvm.LLVMModuleRef, context: llvm.LLVMCont
         switch (node.kind) {
             .FunctionDeclaration => try createFunction(node, context, module, builder),
             .VariableDeclaration => try createVariable(node, context, builder, &global),
+            .FunctionReference => try functionCall(node, builder, module),
             else => unreachable,
         }
     }
 }
 
-pub fn functionCall(node: ASTNode, context: llvm.LLVMContextRef, builder: llvm.LLVMBuilderRef) !void {
+pub fn functionCall(node: ASTNode, builder: llvm.LLVMBuilderRef, module: llvm.LLVMModuleRef) !void {
     const func = node.data.FunctionReference;
 
-    const funfun = functionsmap.get(func.name) orelse return error.FunctionNull;
-    // if (funfun.func == null) {
-    //     return error.FunctionNull;
-    // }
-    // if (func.arguments) |argsm| {
-    //     if (argsm.len != funfun.args_len) {
-    //         std.debug.print("func args length: {}\nfunfun args length: {}\n", .{ argsm.len, funfun.args_len });
-    //         return error.DifferentArgNumbers;
-    //     }
-    // }
-    if (funfun.func == null) {
-        return error.FunctionNull;
-    }
-    const param_count = llvm.LLVMCountParamTypes(llvm.LLVMGetElementType(llvm.LLVMTypeOf(funfun.func)));
-    if (funfun.args_len != param_count) {
-        std.debug.print("Arg count mismatch: funfun args_len={}, function param_count={}\n", .{ funfun.args_len, param_count });
-        return error.DifferentArgNumbers;
-    }
-    const insert_block = llvm.LLVMGetInsertBlock(builder);
-    if (insert_block == null) {
-        std.debug.print("Invalid builder insertion point.\n", .{});
-        return error.BuilderInvalid;
-    }
-    for (0..funfun.args_len) |i| {
-        if (funfun.args[i] == null) {
-            std.debug.print("Null arg value at index {}\n", .{i});
-            return error.NullArgValue;
+    if (func.arguments) |args| {
+        if (args.len == 0) {
+            if (llvm.LLVMGetNamedFunction(module, func.name.ptr)) |val| {
+                const call = llvm.LLVMBuildCall2(builder, llvm.LLVMInt32Type(), val, null, 0, func.name.ptr);
+                _ = llvm.LLVMBuildRet(builder, call);
+            } else return error.FunctionNull;
         }
-    }
-    // const fx = llvm.LLVMGetNamedFunction(module, func.name.ptr);
-    const args: [*c]llvm.LLVMValueRef = funfun.args.ptr;
-    const call = llvm.LLVMBuildCall2(builder, llvm.LLVMInt32TypeInContext(context), funfun.func.?, args.?, @intCast(funfun.args_len), func.name.ptr);
+        var argcount: usize = 0;
+        var topass = std.array_list.Managed(llvm.LLVMValueRef).init(std.heap.page_allocator);
+        for (args) |arg| {
+            switch (arg.kind) {
+                .NumberLiteral => {
+                    try topass.append(llvm.LLVMConstInt(llvm.LLVMInt32Type(), @intCast(arg.data.NumberLiteral.value), 0));
+                    argcount += 1;
+                },
+                else => {},
+            }
+        }
 
+        const call = llvm.LLVMBuildCall2(builder, llvm.LLVMInt32Type(), llvm.LLVMGetNamedFunction(module, func.name.ptr), topass.items.ptr, @intCast(argcount), func.name.ptr);
+        _ = llvm.LLVMBuildRet(builder, call);
+    }
+
+    const call = llvm.LLVMBuildCall2(builder, llvm.LLVMInt32Type(), llvm.LLVMGetNamedFunction(module, func.name.ptr), null, 0, func.name.ptr);
     _ = llvm.LLVMBuildRet(builder, call);
 }
-
 pub fn reassignment(node: ASTNode, context: llvm.LLVMContextRef, builder: llvm.LLVMBuilderRef, map: *std.StringHashMap(llvm.LLVMValueRef)) !void {
     if (node.kind != .Assignment) {
         std.debug.print("{}\n", .{node.kind});
@@ -120,8 +111,6 @@ pub fn createFunction(node: ASTNode, context: llvm.LLVMContextRef, module: llvm.
 
     var vars = std.StringHashMap(llvm.LLVMValueRef).init(std.heap.page_allocator);
     const i32_type = llvm.LLVMInt32Type();
-    const name_null = try std.mem.concat(std.heap.page_allocator, u8, &[_][]const u8{ name, "\x00" });
-
     var pams = std.array_list.Managed(llvm.LLVMTypeRef).init(std.heap.page_allocator);
     var pamsLen: usize = 0;
     if (parameters) |params| {
@@ -145,9 +134,9 @@ pub fn createFunction(node: ASTNode, context: llvm.LLVMContextRef, module: llvm.
     }
 
     const func_type = llvm.LLVMFunctionType(i32_type, pams.items.ptr, @intCast(pamsLen), 0);
-    const fun = llvm.LLVMAddFunction(module, name_null.ptr, func_type);
-    llvm.LLVMSetFunctionCallConv(fun, llvm.LLVMCCallConv);
-    try functionsmap.put(name, .{ .func = fun, .args = pams.items, .args_len = pamsLen });
+    const fun = llvm.LLVMAddFunction(module, name.ptr, func_type);
+    // llvm.LLVMSetFunctionCallConv(fun, llvm.LLVMCCallConv);
+    // try functionsmap.put(name, .{ .func = fun, .args = pams.items, .args_len = pamsLen });
     if (std.mem.eql(u8, name, "main")) {
         const entry_bb = llvm.LLVMAppendBasicBlock(fun, "entry");
 
@@ -156,22 +145,24 @@ pub fn createFunction(node: ASTNode, context: llvm.LLVMContextRef, module: llvm.
             switch (b.kind) {
                 .VariableDeclaration => try createVariable(b, context, builder, &vars),
                 .Assignment => try reassignment(b, context, builder, &vars),
-                .FunctionReference => try functionCall(b, context, builder),
+                .FunctionReference => try functionCall(b, builder, module),
                 else => unreachable,
             }
         }
 
         const ret_val = llvm.LLVMConstInt(i32_type, 0, 0);
 
-        try functionsmap.put(name, .{ .func = fun, .args = pams.items, .args_len = pamsLen });
+        // try functionsmap.put(name, .{ .func = fun, .args = pams.items, .args_len = pamsLen });
         _ = llvm.LLVMBuildRet(builder, ret_val);
     } else {
-        const func = llvm.LLVMAppendBasicBlock(fun, name_null.ptr);
+        const func = llvm.LLVMAppendBasicBlock(fun, name.ptr);
         llvm.LLVMPositionBuilderAtEnd(builder, func);
         for (body) |b| {
             switch (b.kind) {
                 .VariableDeclaration => try createVariable(b, context, builder, &vars),
                 .Assignment => try reassignment(b, context, builder, &vars),
+                .FunctionReference => try functionCall(b, builder, module),
+
                 else => unreachable,
             }
         }

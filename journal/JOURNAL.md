@@ -318,3 +318,10 @@ Right now I'm attemping to get printf to be a thing in my language. To print stu
 messy to keep up. I have like 20 flexible datastructures duck taping the project and most of them are wasting memory with page allocators instead of fba or GPA
 ones. Also having to take care of all of it is mentally challenging and I get desmotivated pretty quickly but later on I might finish it or just run into a 
 problem with a simple resolution. That's the routine lol. Just saving this progress tho-
+
+
+## Function calls are doomed to segfault
+
+It's been like 3 days already trying to get function calls to be a thing. This is for the 'Hello world' achievement using printf but for some reason, this bitch
+of a API keeps segfaulting. I've already done some rework but I just keep getting the same result. Now I understand the hate for segmentation fault. It stops 
+being funny the 67th time.
