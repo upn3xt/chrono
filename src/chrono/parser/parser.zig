@@ -245,17 +245,24 @@ pub fn parseAssignment(self: *Parser, syms: *std.StringHashMap(Object)) !ASTNode
                     .STRING => {
                         const strnode: ASTNode = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{ .value = self.current_token.lexeme } } };
                         try args.append(strnode);
+                        try self.advance();
                     },
-                    .NUMBER => {},
+                    .NUMBER => {
+                        const num = try std.fmt.parseInt(i32, self.current_token.lexeme, 10);
+                        const numnode: ASTNode = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = num } } };
+                        try args.append(numnode);
+                        try self.advance();
+                    },
                     .IDENTIFIER => {},
-                    .SYMBOL => |s| if (s == .r_roundBracket) break,
+                    .SYMBOL => |s| if (s == .r_roundBracket) {
+                        try self.advance();
+                        break;
+                    },
 
                     else => unreachable,
                 }
                 current_token = self.current_token.token_type;
             }
-
-            try self.advance();
 
             try self.semiAndGo();
 
@@ -263,50 +270,53 @@ pub fn parseAssignment(self: *Parser, syms: *std.StringHashMap(Object)) !ASTNode
             return node;
         }
     }
-    if (self.current_token.token_type != .OPERATOR) return error.ExpectedOperator;
-    if (self.current_token.token_type.OPERATOR != .equal) try self.errorHandler(error.ExpectedOperatorEqual);
+    if (self.current_token.token_type == .OPERATOR) {
+        if (self.current_token.token_type.OPERATOR != .equal) try self.errorHandler(error.ExpectedOperatorEqual);
 
-    try self.advance();
+        try self.advance();
 
-    switch (self.current_token.token_type) {
-        .STRING => {
-            const value = self.current_token.lexeme;
-            exp.* = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{
-                .value = value,
-            } } };
-            asgtype = .String;
-        },
-        .CHAR => {
-            const value = self.current_token.lexeme[0];
-            exp.* = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = value } } };
-            asgtype = .Char;
-        },
-        .NUMBER => {
-            const value = try self.parseNumber(0);
-            exp.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
-            asgtype = .Int;
+        switch (self.current_token.token_type) {
+            .STRING => {
+                const value = self.current_token.lexeme;
+                exp.* = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{
+                    .value = value,
+                } } };
+                asgtype = .String;
+            },
+            .CHAR => {
+                const value = self.current_token.lexeme[0];
+                exp.* = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = value } } };
+                asgtype = .Char;
+            },
+            .NUMBER => {
+                const value = try self.parseNumber(0);
+                exp.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
+                asgtype = .Int;
 
-            const node = try self.allocator.create(ASTNode);
-            node.* = .{ .kind = .Assignment, .data = .{ .Assignment = .{ .variable = var_node, .expression = exp, .asg_type = asgtype } } };
+                const node = try self.allocator.create(ASTNode);
+                node.* = .{ .kind = .Assignment, .data = .{ .Assignment = .{ .variable = var_node, .expression = exp, .asg_type = asgtype } } };
 
-            std.debug.print("{s} mutated!\n", .{name});
+                std.debug.print("{s} mutated!\n", .{name});
 
-            return node.*;
-        },
-        else => try self.errorHandler(error.UnexpectedTokenError),
+                return node.*;
+            },
+            else => try self.errorHandler(error.UnexpectedTokenError),
+        }
+
+        try self.advance();
+
+        try self.semiAndGo();
+
+        if (syms.get(name)) |_| {} else return error.UndefinedVariableError;
+
+        const node: ASTNode = .{ .kind = .Assignment, .data = .{ .Assignment = .{ .variable = var_node, .expression = exp, .asg_type = asgtype } } };
+
+        std.debug.print("{s} mutated!\n", .{name});
+
+        return node;
     }
 
-    try self.advance();
-
-    try self.semiAndGo();
-
-    if (syms.get(name)) |_| {} else return error.UndefinedVariableError;
-
-    const node: ASTNode = .{ .kind = .Assignment, .data = .{ .Assignment = .{ .variable = var_node, .expression = exp, .asg_type = asgtype } } };
-
-    std.debug.print("{s} mutated!\n", .{name});
-
-    return node;
+    return error.Bablabablah;
 }
 
 pub fn parseFunctionDeclaration(self: *Parser) !ASTNode {

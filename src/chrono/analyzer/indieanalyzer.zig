@@ -45,7 +45,10 @@ pub fn analyzeVariableDeclaration(node: ASTNode, symbols: *std.StringHashMap(Obj
 }
 
 pub fn analyzeAssignment(node: ASTNode, symbols: *std.StringHashMap(Object)) !void {
-    if (node.kind == .FunctionReference) {}
+    if (node.kind == .FunctionReference) {
+        // node.data.FunctionReference.name;
+        // node.data.FunctionReference.arguments;
+    }
     if (node.kind == .Assignment) {
         const asg_type = node.data.Assignment.asg_type;
         const variable = node.data.Assignment.variable;
@@ -98,7 +101,7 @@ pub fn analyzeFunctionDeclaration(node: ASTNode, symbols: *std.StringHashMap(Obj
                     .Assignment => {
                         try analyzeAssignment(b, symbols);
                     },
-                    .FunctionReference => {},
+                    .FunctionReference => try analyzeAssignment(b, symbols),
                     else => unreachable,
                 }
             }

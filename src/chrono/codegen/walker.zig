@@ -11,7 +11,7 @@ const llvm = @cImport({
 
 const Function = struct {
     func: llvm.LLVMValueRef,
-    args: []llvm.LLVMValueRef,
+    args: []llvm.LLVMTypeRef,
     args_len: usize,
 };
 
@@ -49,17 +49,37 @@ pub fn functionCall(node: ASTNode, context: llvm.LLVMContextRef, builder: llvm.L
     const func = node.data.FunctionReference;
 
     const funfun = functionsmap.get(func.name) orelse return error.FunctionNull;
-    const i32_type = llvm.LLVMInt32TypeInContext(context);
+    // if (funfun.func == null) {
+    //     return error.FunctionNull;
+    // }
+    // if (func.arguments) |argsm| {
+    //     if (argsm.len != funfun.args_len) {
+    //         std.debug.print("func args length: {}\nfunfun args length: {}\n", .{ argsm.len, funfun.args_len });
+    //         return error.DifferentArgNumbers;
+    //     }
+    // }
     if (funfun.func == null) {
         return error.FunctionNull;
     }
-    if (func.arguments) |argsm| {
-        if (argsm.len != funfun.args_len) return error.DifferentArgNumbers;
+    const param_count = llvm.LLVMCountParamTypes(llvm.LLVMGetElementType(llvm.LLVMTypeOf(funfun.func)));
+    if (funfun.args_len != param_count) {
+        std.debug.print("Arg count mismatch: funfun args_len={}, function param_count={}\n", .{ funfun.args_len, param_count });
+        return error.DifferentArgNumbers;
     }
-
+    const insert_block = llvm.LLVMGetInsertBlock(builder);
+    if (insert_block == null) {
+        std.debug.print("Invalid builder insertion point.\n", .{});
+        return error.BuilderInvalid;
+    }
+    for (0..funfun.args_len) |i| {
+        if (funfun.args[i] == null) {
+            std.debug.print("Null arg value at index {}\n", .{i});
+            return error.NullArgValue;
+        }
+    }
     // const fx = llvm.LLVMGetNamedFunction(module, func.name.ptr);
     const args: [*c]llvm.LLVMValueRef = funfun.args.ptr;
-    const call = llvm.LLVMBuildCall2(builder, i32_type, funfun.func, args, @intCast(funfun.args_len), func.name.ptr);
+    const call = llvm.LLVMBuildCall2(builder, llvm.LLVMInt32TypeInContext(context), funfun.func.?, args.?, @intCast(funfun.args_len), func.name.ptr);
 
     _ = llvm.LLVMBuildRet(builder, call);
 }
@@ -99,28 +119,39 @@ pub fn createFunction(node: ASTNode, context: llvm.LLVMContextRef, module: llvm.
     // const value = node.data.FunctionDeclaration.value;
 
     var vars = std.StringHashMap(llvm.LLVMValueRef).init(std.heap.page_allocator);
-    const i32_type = llvm.LLVMInt32TypeInContext(context);
+    const i32_type = llvm.LLVMInt32Type();
     const name_null = try std.mem.concat(std.heap.page_allocator, u8, &[_][]const u8{ name, "\x00" });
 
+    var pams = std.array_list.Managed(llvm.LLVMTypeRef).init(std.heap.page_allocator);
+    var pamsLen: usize = 0;
+    if (parameters) |params| {
+        for (params) |p| {
+            switch (p.kind) {
+                .Parameter => {
+                    switch (p.data.Parameter.par_type) {
+                        .Int => {
+                            try pams.append(i32_type);
+                            pamsLen += 1;
+                        },
+                        else => {},
+                    }
+                },
+                else => {
+                    std.debug.print("nope, kind:{}\n", .{p.kind});
+                    break;
+                },
+            }
+        }
+    }
+
+    const func_type = llvm.LLVMFunctionType(i32_type, pams.items.ptr, @intCast(pamsLen), 0);
+    const fun = llvm.LLVMAddFunction(module, name_null.ptr, func_type);
+    llvm.LLVMSetFunctionCallConv(fun, llvm.LLVMCCallConv);
+    try functionsmap.put(name, .{ .func = fun, .args = pams.items, .args_len = pamsLen });
     if (std.mem.eql(u8, name, "main")) {
         const entry_bb = llvm.LLVMAppendBasicBlock(fun, "entry");
 
         llvm.LLVMPositionBuilderAtEnd(builder, entry_bb);
-        var pams = std.array_list.Managed(llvm.LLVMValueRef).init(std.heap.page_allocator);
-        if (parameters) |params| {
-            for (params) |p| {
-                switch (p.kind) {
-                    .NumberLiteral => {
-                        try pams.append(llvm.LLVMConstInt(llvm.LLVMInt32Type(), @intCast(p.data.NumberLiteral.value), 0));
-                    },
-                    // .StringLiteral => try pams.append(llvm.string),
-                    //
-
-                    else => {},
-                }
-            }
-        }
-
         for (body) |b| {
             switch (b.kind) {
                 .VariableDeclaration => try createVariable(b, context, builder, &vars),
@@ -132,26 +163,10 @@ pub fn createFunction(node: ASTNode, context: llvm.LLVMContextRef, module: llvm.
 
         const ret_val = llvm.LLVMConstInt(i32_type, 0, 0);
 
-        const func_type = llvm.LLVMFunctionType(i32_type, pams.items.ptr, @intCast(pams.capacity), 0);
-        const fun = llvm.LLVMAddFunction(module, name_null.ptr, func_type);
-        llvm.LLVMSetFunctionCallConv(fun, llvm.LLVMCCallConv);
-        try functionsmap.put(name, .{ .func = fun, .args = pams.items, .args_len = pams.capacity });
+        try functionsmap.put(name, .{ .func = fun, .args = pams.items, .args_len = pamsLen });
         _ = llvm.LLVMBuildRet(builder, ret_val);
     } else {
         const func = llvm.LLVMAppendBasicBlock(fun, name_null.ptr);
-        var pams = std.array_list.Managed(llvm.LLVMValueRef).init(std.heap.page_allocator);
-        if (parameters) |params| {
-            for (params) |p| {
-                switch (p.kind) {
-                    .NumberLiteral => try pams.append(llvm.LLVMConstInt(llvm.LLVMInt32Type(), @intCast(p.data.NumberLiteral.value), 0)),
-
-                    // .StringLiteral => try pams.append(llvm.string),
-                    //
-
-                    else => {},
-                }
-            }
-        }
         llvm.LLVMPositionBuilderAtEnd(builder, func);
         for (body) |b| {
             switch (b.kind) {
@@ -163,10 +178,6 @@ pub fn createFunction(node: ASTNode, context: llvm.LLVMContextRef, module: llvm.
 
         const ret_val = llvm.LLVMConstInt(i32_type, 0, 0);
 
-        const func_type = llvm.LLVMFunctionType(i32_type, pams.items.ptr, @intCast(pams.capacity), 0);
-        const fun = llvm.LLVMAddFunction(module, name_null.ptr, func_type);
-        llvm.LLVMSetFunctionCallConv(fun, llvm.LLVMCCallConv);
-        try functionsmap.put(name, .{ .func = fun, .args = pams.items, .args_len = pams.capacity });
         _ = llvm.LLVMBuildRet(builder, ret_val);
     }
 }
