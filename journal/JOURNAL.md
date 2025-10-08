@@ -325,3 +325,11 @@ problem with a simple resolution. That's the routine lol. Just saving this progr
 It's been like 3 days already trying to get function calls to be a thing. This is for the 'Hello world' achievement using printf but for some reason, this bitch
 of a API keeps segfaulting. I've already done some rework but I just keep getting the same result. Now I understand the hate for segmentation fault. It stops 
 being funny the 67th time.
+
+
+## I've found it!
+
+It's been like a week since I tried to get this thing working but school and lazyness got in the way. Today I was ready to fix a probable version issue when 
+I opened a different chat to help me fix the problem and there were two exactly: Not making the module based on the current context and not using the function 
+version constant rather than llvmsometypeyadayada. The moment clean llvm code got generated in the sample file(main.c) I was so happy!! Now I just gotta fix 
+another issue which is the getnamedfunction. As soon this flies, its fireworks!
