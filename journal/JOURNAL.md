@@ -340,3 +340,9 @@ another issue which is the getnamedfunction. As soon this flies, its fireworks!
 Now function calls are a thing.. Kind of. I used the ducktape approach and it works!.. But now theres poop all over the place. Got a dangling pointer in my 
 hands guys. Where? HA! you wish I knew.... In a code with 2000+ lines of code you want ME to find a dangling pointer? IT COULD ANYWHERE! I have to find this 
 to properly get printf to work.
+
+## segfault and stupid zig errors. seriously this is making my day bad 
+
+I can't even compile my code anymore because there's a circular dependency error going on (apparently) on the parser and ast but ofc this just exists the moment 
+function calls stop being a problem. This is so stupid. And previously hit a half segfault(don't even ask me how is that possible) and need to make it right 
+before printf.

@@ -1,6 +1,5 @@
 const std = @import("std");
-const Import = @import("chrono/imports.zig");
-const Builder = Import.Builder;
+const Builder = @import("../src/chrono/builder/builder.zig");
 
 pub fn main() !void {
     try Builder.build();

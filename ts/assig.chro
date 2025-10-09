@@ -5,9 +5,5 @@ fn main() void {
   var t = 20;
   const y = 20;
   t = 2000;
-  // bro(90);
+  bro(90);
 }
-
-
-
-main();

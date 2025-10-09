@@ -1,15 +1,12 @@
 const std = @import("std");
 
-const Import = @import("../imports.zig");
-const Token = Import.Token;
-const Lexer = Import.Lexer;
-const Parser = Import.Parser;
-const ASTNode = Import.ASTNode;
-const Analyzer = Import.Analyzer;
-const Object = Import.Object;
-const Printer = Import.Printer;
-const Walker = Import.Walker;
-
+const Token = @import("../token/token.zig");
+const Lexer = @import("../lexer/lexer.zig");
+const Parser = @import("../parser/parser.zig");
+const ASTNode = @import("../ast/ast.zig");
+const Object = @import("../object/object.zig");
+const Printer = @import("../printer/printer.zig");
+const Walker = @import("../codegen/walker.zig");
 const Builder = @This();
 
 const llvm = @cImport({

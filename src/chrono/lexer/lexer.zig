@@ -1,8 +1,7 @@
 const std = @import("std");
-const Import = @import("../imports.zig");
 const eql = std.mem.eql;
 
-const Token = Import.Token;
+const Token = @import("../../chrono/token/token.zig");
 
 const Lexer = @This();
 

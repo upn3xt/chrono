@@ -1,9 +1,9 @@
 const std = @import("std");
-const Import = @import("../imports.zig");
 
-const Type = Import.Types.Types;
-const ASTNode = Import.ASTNode;
-const Object = Import.Object;
+// const Type = @import("../types/types.zig").Type;
+const ASTNode = @import("../../chrono/ast/ast.zig");
+const Type = ASTNode.Type;
+const Object = @import("../object/object.zig");
 
 const IndieAnalyzer = @This();
 

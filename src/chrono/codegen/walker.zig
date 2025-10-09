@@ -1,7 +1,8 @@
-const Walker = @This();
 const std = @import("std");
-const Import = @import("../imports.zig");
-const ASTNode = Import.ASTNode;
+
+const ASTNode = @import("../../chrono/ast/ast.zig");
+
+const Walker = @This();
 const llvm = @cImport({
     @cInclude("llvm-c/Core.h");
     @cInclude("llvm-c/Analysis.h");

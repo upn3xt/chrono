@@ -1,11 +1,10 @@
 const std = @import("std");
 
-const Import = @import("../imports.zig");
-const Token = Import.Token;
-const ASTNode = Import.ASTNode;
-const Type = Import.Types.Types;
-const IndieAnalyzer = Import.IndieAnalyzer;
-const Object = Import.Object;
+const IndieAnalyzer = @import("../../chrono/analyzer/indieanalyzer.zig");
+const ASTNode = @import("../../chrono/ast/ast.zig");
+const Object = @import("../../chrono/object/object.zig");
+const Type = ASTNode.Type;
+const Token = @import("../token/token.zig");
 
 var vars = std.StringHashMap(Object).init(std.heap.page_allocator);
 var funcs = std.StringHashMap(Object).init(std.heap.page_allocator);

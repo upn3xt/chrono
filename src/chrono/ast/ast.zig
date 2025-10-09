@@ -1,6 +1,7 @@
-const Type = @import("../analyzer/types.zig").Types;
-
 const ASTNode = @This();
+const astnode = @import("../ast/ast.zig");
+
+pub const Type = enum { Int, Float, String, Bool, Char, Void };
 
 kind: NodeKind,
 data: union(NodeKind) {
