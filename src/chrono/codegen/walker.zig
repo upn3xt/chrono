@@ -51,7 +51,9 @@ pub fn functionCall(node: ASTNode, builder: llvm.LLVMBuilderRef, module: llvm.LL
     const func = node.data.FunctionReference;
     _ = module;
     const funcx = functionsmap.get(func.name) orelse return error.FunctionNull;
-    const call = llvm.LLVMBuildCall2(builder, funcx.func_type, funcx.func, funcx.args.ptr, @intCast(funcx.args_len), func.name.ptr);
+
+    const cname = try std.fmt.allocPrint(std.heap.page_allocator, "{s}", .{func.name});
+    const call = llvm.LLVMBuildCall2(builder, funcx.func_type, funcx.func, funcx.args.ptr, @intCast(funcx.args_len), cname.ptr);
     _ = llvm.LLVMBuildRet(builder, call);
 }
 pub fn reassignment(node: ASTNode, context: llvm.LLVMContextRef, builder: llvm.LLVMBuilderRef, map: *std.StringHashMap(llvm.LLVMValueRef)) !void {
@@ -83,6 +85,7 @@ pub fn reassignment(node: ASTNode, context: llvm.LLVMContextRef, builder: llvm.L
 
 pub fn createFunction(node: ASTNode, context: llvm.LLVMContextRef, module: llvm.LLVMModuleRef, builder: llvm.LLVMBuilderRef) !void {
     const name = node.data.FunctionDeclaration.name;
+    std.debug.print("generating function {s}\n", .{name});
     const body = node.data.FunctionDeclaration.body;
     const parameters = node.data.FunctionDeclaration.parameters;
     // const fn_type = node.data.FunctionDeclaration.fn_type;
@@ -128,6 +131,7 @@ pub fn createFunction(node: ASTNode, context: llvm.LLVMContextRef, module: llvm.
             .VariableDeclaration => try createVariable(b, context, builder, &vars),
             .Assignment => try reassignment(b, context, builder, &vars),
             .FunctionReference => try functionCall(b, builder, module),
+            .Return => break,
             else => unreachable,
         }
     }

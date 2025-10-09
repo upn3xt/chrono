@@ -485,6 +485,7 @@ pub fn semiAndGo(self: *Parser) !void {
 }
 
 pub fn parseReturn(self: *Parser) !ASTNode {
+    var node: ASTNode = undefined;
     var exp: ASTNode = undefined;
     try self.advance();
 
@@ -509,7 +510,9 @@ pub fn parseReturn(self: *Parser) !ASTNode {
     try self.semiAndGo();
 
     try self.advance();
-    return exp;
+
+    node = .{ .kind = .Return, .data = .{ .Return = exp } };
+    return node;
 }
 
 pub fn h_getType(_: *Parser, elem: []const u8) ?Type {

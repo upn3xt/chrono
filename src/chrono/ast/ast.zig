@@ -1,8 +1,4 @@
-const Import = @import("../imports.zig");
-
-const Analyzer = Import.Analyzer;
-
-const Type = Import.Types.Types;
+const Type = @import("../analyzer/types.zig").Types;
 
 const ASTNode = @This();
 
@@ -51,6 +47,10 @@ data: union(NodeKind) {
         name: []const u8,
         par_type: Type,
     },
+
+    Return: struct {
+        value: ASTNode,
+    },
 },
 
 pub const NodeKind = enum {
@@ -64,4 +64,5 @@ pub const NodeKind = enum {
     FunctionDeclaration,
     FunctionReference,
     Parameter,
+    Return,
 };
