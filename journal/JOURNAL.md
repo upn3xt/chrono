@@ -352,3 +352,8 @@ before printf.
 
 AI is a blessing at times like this. GPT said that ASTNode as main struct would create a circular dependency cycle since im doing SomeField: ASTNode ←  this 
 is the circular point. The fix is simple using pointers. I know that a while ago I said that pointers were bad so guess what? They're not. And a massive refactor is coming.
+
+
+## Set a world record for refactor cause I'm just like that! 
+
+Made a the previous commit like 10 mins ago and the massive refactoring is done in less time.

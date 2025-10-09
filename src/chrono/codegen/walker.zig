@@ -19,7 +19,7 @@ const Function = struct {
 
 var functionsmap = std.StringHashMap(Function).init(std.heap.page_allocator);
 
-pub fn buildFile(filename: []const u8, nodes: []ASTNode) !void {
+pub fn buildFile(filename: []const u8, nodes: []*ASTNode) !void {
     const context = llvm.LLVMContextCreate();
     defer llvm.LLVMContextDispose(context);
 
@@ -36,10 +36,10 @@ pub fn buildFile(filename: []const u8, nodes: []ASTNode) !void {
     llvm.LLVMDumpModule(module);
 }
 /// Walks through the AST nodes and emits an object
-pub fn walk(nodes: []ASTNode, module: llvm.LLVMModuleRef, context: llvm.LLVMContextRef, builder: llvm.LLVMBuilderRef) !void {
+pub fn walk(nodes: []*ASTNode, module: llvm.LLVMModuleRef, context: llvm.LLVMContextRef, builder: llvm.LLVMBuilderRef) !void {
     var global = std.StringHashMap(llvm.LLVMValueRef).init(std.heap.page_allocator);
     for (nodes) |node| {
-        switch (node.kind) {
+        switch (node.*.kind) {
             .FunctionDeclaration => try createFunction(node, context, module, builder),
             .VariableDeclaration => try createVariable(node, context, builder, &global),
             .FunctionReference => try functionCall(node, builder, module),
@@ -48,8 +48,8 @@ pub fn walk(nodes: []ASTNode, module: llvm.LLVMModuleRef, context: llvm.LLVMCont
     }
 }
 
-pub fn functionCall(node: ASTNode, builder: llvm.LLVMBuilderRef, module: llvm.LLVMModuleRef) !void {
-    const func = node.data.FunctionReference;
+pub fn functionCall(node: *ASTNode, builder: llvm.LLVMBuilderRef, module: llvm.LLVMModuleRef) !void {
+    const func = node.*.data.FunctionReference;
     _ = module;
     const funcx = functionsmap.get(func.name) orelse return error.FunctionNull;
 
@@ -57,18 +57,18 @@ pub fn functionCall(node: ASTNode, builder: llvm.LLVMBuilderRef, module: llvm.LL
     const call = llvm.LLVMBuildCall2(builder, funcx.func_type, funcx.func, funcx.args.ptr, @intCast(funcx.args_len), cname.ptr);
     _ = llvm.LLVMBuildRet(builder, call);
 }
-pub fn reassignment(node: ASTNode, context: llvm.LLVMContextRef, builder: llvm.LLVMBuilderRef, map: *std.StringHashMap(llvm.LLVMValueRef)) !void {
-    if (node.kind != .Assignment) {
-        std.debug.print("{}\n", .{node.kind});
+pub fn reassignment(node: *ASTNode, context: llvm.LLVMContextRef, builder: llvm.LLVMBuilderRef, map: *std.StringHashMap(llvm.LLVMValueRef)) !void {
+    if (node.*.kind != .Assignment) {
+        std.debug.print("{}\n", .{node.*.kind});
         return error.ExpectedAssignmentNode;
     }
 
-    const varvar = node.data.Assignment.variable;
+    const varvar = node.*.data.Assignment.variable;
     const varvarx = switch (varvar.kind) {
         .VariableReference => varvar.data.VariableReference,
         else => unreachable,
     };
-    const asg = node.data.Assignment;
+    const asg = node.*.data.Assignment;
 
     switch (asg.expression.kind) {
         .NumberLiteral => {
@@ -84,13 +84,13 @@ pub fn reassignment(node: ASTNode, context: llvm.LLVMContextRef, builder: llvm.L
     }
 }
 
-pub fn createFunction(node: ASTNode, context: llvm.LLVMContextRef, module: llvm.LLVMModuleRef, builder: llvm.LLVMBuilderRef) !void {
-    const name = node.data.FunctionDeclaration.name;
+pub fn createFunction(node: *ASTNode, context: llvm.LLVMContextRef, module: llvm.LLVMModuleRef, builder: llvm.LLVMBuilderRef) !void {
+    const name = node.*.data.FunctionDeclaration.name;
     std.debug.print("generating function {s}\n", .{name});
-    const body = node.data.FunctionDeclaration.body;
-    const parameters = node.data.FunctionDeclaration.parameters;
-    // const fn_type = node.data.FunctionDeclaration.fn_type;
-    // const value = node.data.FunctionDeclaration.value;
+    const body = node.*.data.FunctionDeclaration.body;
+    const parameters = node.*.data.FunctionDeclaration.parameters;
+    // const fn_type = node.*.data.FunctionDeclaration.fn_type;
+    // const value = node.*.data.FunctionDeclaration.value;
 
     var vars = std.StringHashMap(llvm.LLVMValueRef).init(std.heap.page_allocator);
     const i32_type = llvm.LLVMInt32Type();
@@ -148,13 +148,13 @@ pub fn definePrintf(context: llvm.LLVMContextRef, module: llvm.LLVMModuleRef) ll
     return llvm.LLVMAddFunction(module, "printf", printf_type);
 }
 
-pub fn createVariable(node: ASTNode, context: llvm.LLVMContextRef, builder: llvm.LLVMBuilderRef, map: *std.StringHashMap(llvm.LLVMValueRef)) !void {
-    if (node.kind != .VariableDeclaration) {
-        std.debug.print("{}\n", .{node.kind});
+pub fn createVariable(node: *ASTNode, context: llvm.LLVMContextRef, builder: llvm.LLVMBuilderRef, map: *std.StringHashMap(llvm.LLVMValueRef)) !void {
+    if (node.*.kind != .VariableDeclaration) {
+        std.debug.print("{}\n", .{node.*.kind});
         return error.ExpectedVariableDeclarationNode;
     }
 
-    const varvar = node.data.VariableDeclaration;
+    const varvar = node.*.data.VariableDeclaration;
     switch (varvar.var_type) {
         .Int => {
             const i32_type = llvm.LLVMInt32TypeInContext(context);

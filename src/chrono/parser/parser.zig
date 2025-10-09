@@ -69,8 +69,8 @@ pub fn errorHandler(self: *Parser, err: ParserError) ParserError!void {
     }
 }
 
-pub fn ParseTokens(self: *Parser) ![]ASTNode {
-    var node_list = std.array_list.Managed(ASTNode).init(self.allocator);
+pub fn ParseTokens(self: *Parser) ![]*ASTNode {
+    var node_list = std.array_list.Managed(*ASTNode).init(self.allocator);
     while (true) {
         if (self.index >= self.tokens.len) try self.errorHandler(error.IndexOutOfBoundsError);
 
@@ -109,7 +109,7 @@ pub fn ParseTokens(self: *Parser) ![]ASTNode {
     return node_list.items;
 }
 
-pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !ASTNode {
+pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !*ASTNode {
     const exp = try self.allocator.create(ASTNode);
     try self.advance();
 
@@ -142,7 +142,8 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !ASTNode {
                 var_type = .Int;
                 exp.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
 
-                const node: ASTNode = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{
+                const node = try self.allocator.create(ASTNode);
+                node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{
                     .name = name,
                     .expression = exp,
                     .mutable = isMutable,
@@ -163,7 +164,8 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !ASTNode {
 
         try self.semiAndGo();
 
-        const node: ASTNode = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{
+        const node = try self.allocator.create(ASTNode);
+        node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{
             .name = name,
             .expression = exp,
             .mutable = isMutable,
@@ -207,7 +209,8 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !ASTNode {
 
         try self.semiAndGo();
 
-        const node: ASTNode = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{
+        const node = try self.allocator.create(ASTNode);
+        node.* = .{ .kind = .VariableDeclaration, .data = .{ .VariableDeclaration = .{
             .name = name,
             .expression = exp,
             .mutable = isMutable,
@@ -223,7 +226,7 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !ASTNode {
     return error.OperationVarDecFailed;
 }
 
-pub fn parseAssignment(self: *Parser, syms: *std.StringHashMap(Object)) !ASTNode {
+pub fn parseAssignment(self: *Parser, syms: *std.StringHashMap(Object)) !*ASTNode {
     var asgtype: Type = undefined;
     const exp = try self.allocator.create(ASTNode);
 
@@ -237,18 +240,20 @@ pub fn parseAssignment(self: *Parser, syms: *std.StringHashMap(Object)) !ASTNode
     if (self.current_token.token_type == .SYMBOL) {
         if (self.current_token.token_type.SYMBOL == .l_roundBracket) {
             try self.advance();
-            var args = std.array_list.Managed(ASTNode).init(std.heap.page_allocator);
+            var args = std.array_list.Managed(*ASTNode).init(std.heap.page_allocator);
             while (true) {
                 var current_token = self.current_token.token_type;
                 switch (current_token) {
                     .STRING => {
-                        const strnode: ASTNode = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{ .value = self.current_token.lexeme } } };
+                        const strnode = try self.allocator.create(ASTNode);
+                        strnode.* = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{ .value = self.current_token.lexeme } } };
                         try args.append(strnode);
                         try self.advance();
                     },
                     .NUMBER => {
                         const num = try std.fmt.parseInt(i32, self.current_token.lexeme, 10);
-                        const numnode: ASTNode = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = num } } };
+                        const numnode = try self.allocator.create(ASTNode);
+                        numnode.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = num } } };
                         try args.append(numnode);
                         try self.advance();
                     },
@@ -265,7 +270,8 @@ pub fn parseAssignment(self: *Parser, syms: *std.StringHashMap(Object)) !ASTNode
 
             try self.semiAndGo();
 
-            const node = ASTNode{ .kind = .FunctionReference, .data = .{ .FunctionReference = .{ .arguments = args.items, .name = name } } };
+            const node = try self.allocator.create(ASTNode);
+            node.* = .{ .kind = .FunctionReference, .data = .{ .FunctionReference = .{ .arguments = args.items, .name = name } } };
             return node;
         }
     }
@@ -297,7 +303,7 @@ pub fn parseAssignment(self: *Parser, syms: *std.StringHashMap(Object)) !ASTNode
 
                 std.debug.print("{s} mutated!\n", .{name});
 
-                return node.*;
+                return node;
             },
             else => try self.errorHandler(error.UnexpectedTokenError),
         }
@@ -308,7 +314,8 @@ pub fn parseAssignment(self: *Parser, syms: *std.StringHashMap(Object)) !ASTNode
 
         if (syms.get(name)) |_| {} else return error.UndefinedVariableError;
 
-        const node: ASTNode = .{ .kind = .Assignment, .data = .{ .Assignment = .{ .variable = var_node, .expression = exp, .asg_type = asgtype } } };
+        const node = try self.allocator.create(ASTNode);
+        node.* = .{ .kind = .Assignment, .data = .{ .Assignment = .{ .variable = var_node, .expression = exp, .asg_type = asgtype } } };
 
         std.debug.print("{s} mutated!\n", .{name});
 
@@ -318,8 +325,8 @@ pub fn parseAssignment(self: *Parser, syms: *std.StringHashMap(Object)) !ASTNode
     return error.Bablabablah;
 }
 
-pub fn parseFunctionDeclaration(self: *Parser) !ASTNode {
-    var node: ASTNode = undefined;
+pub fn parseFunctionDeclaration(self: *Parser) !*ASTNode {
+    const node = try self.allocator.create(ASTNode);
     try self.advance();
 
     if (self.current_token.token_type != .IDENTIFIER) try self.errorHandler(error.ExpectedIdentifierError);
@@ -377,7 +384,7 @@ pub fn parseFunctionDeclaration(self: *Parser) !ASTNode {
 
     try self.advance();
 
-    var body = std.array_list.Managed(ASTNode).init(self.allocator);
+    var body = std.array_list.Managed(*ASTNode).init(self.allocator);
     var varsbody = std.StringHashMap(Object).init(std.heap.page_allocator);
     // defer varsbody.deinit();
 
@@ -415,7 +422,7 @@ pub fn parseFunctionDeclaration(self: *Parser) !ASTNode {
             else => try self.errorHandler(error.UnexpectedTokenError),
         }
     }
-    node = .{ .kind = .FunctionDeclaration, .data = .{ .FunctionDeclaration = .{
+    node.* = .{ .kind = .FunctionDeclaration, .data = .{ .FunctionDeclaration = .{
         .name = fn_name,
         .fn_type = ret_type,
         .parameters = parameters.items,
@@ -483,27 +490,25 @@ pub fn semiAndGo(self: *Parser) !void {
     try self.advance();
 }
 
-pub fn parseReturn(self: *Parser) !ASTNode {
-    // const node = try self.allocator.create(ASTNode);
-    // const exp = try self.allocator.create(ASTNode);
-    var node: ASTNode = undefined;
-    var exp: ASTNode = undefined;
+pub fn parseReturn(self: *Parser) !*ASTNode {
+    const node = try self.allocator.create(ASTNode);
+    const exp = try self.allocator.create(ASTNode);
     try self.advance();
 
     switch (self.current_token.token_type) {
         .STRING => {
             const value = self.current_token.lexeme;
             std.debug.print("returning {s}...\n", .{value});
-            exp = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{ .value = value } } };
+            exp.* = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{ .value = value } } };
         },
         .CHAR => {
             const value = self.current_token.lexeme[0];
             std.debug.print("returning {c}...\n", .{value});
-            exp = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = value } } };
+            exp.* = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = value } } };
         },
         .NUMBER => {
             const value = try self.parseNumber(0);
-            exp = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
+            exp.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
         },
         else => try self.errorHandler(error.UnexpectedTokenError),
     }
@@ -512,7 +517,7 @@ pub fn parseReturn(self: *Parser) !ASTNode {
 
     try self.advance();
 
-    node = .{ .kind = .Return, .data = .{ .Return = .{ .value = &exp } } };
+    node.* = .{ .kind = .Return, .data = .{ .Return = .{ .value = exp } } };
     return node;
 }
 

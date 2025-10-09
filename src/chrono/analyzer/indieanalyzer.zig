@@ -7,14 +7,14 @@ const Object = @import("../object/object.zig");
 
 const IndieAnalyzer = @This();
 
-pub fn analyzeVariableDeclaration(node: ASTNode, symbols: *std.StringHashMap(Object)) !void {
-    const name = node.data.VariableDeclaration.name;
+pub fn analyzeVariableDeclaration(node: *ASTNode, symbols: *std.StringHashMap(Object)) !void {
+    const name = node.*.data.VariableDeclaration.name;
 
-    const exp = node.data.VariableDeclaration.expression;
+    const exp = node.*.data.VariableDeclaration.expression;
 
-    const var_type = node.data.VariableDeclaration.var_type;
+    const var_type = node.*.data.VariableDeclaration.var_type;
 
-    const mutable = node.data.VariableDeclaration.mutable;
+    const mutable = node.*.data.VariableDeclaration.mutable;
 
     var exp_type: Type = undefined;
 
@@ -44,14 +44,14 @@ pub fn analyzeVariableDeclaration(node: ASTNode, symbols: *std.StringHashMap(Obj
     try symbols.put(name, .{ .identifier = name, .mutable = mutable, .obtype = exp_type });
 }
 
-pub fn analyzeAssignment(node: ASTNode, symbols: *std.StringHashMap(Object)) !void {
+pub fn analyzeAssignment(node: *ASTNode, symbols: *std.StringHashMap(Object)) !void {
     if (node.kind == .FunctionReference) {
-        // node.data.FunctionReference.name;
-        // node.data.FunctionReference.arguments;
+        // node.*.data.FunctionReference.name;
+        // node.*.data.FunctionReference.arguments;
     }
     if (node.kind == .Assignment) {
-        const asg_type = node.data.Assignment.asg_type;
-        const variable = node.data.Assignment.variable;
+        const asg_type = node.*.data.Assignment.asg_type;
+        const variable = node.*.data.Assignment.variable;
 
         const varvar = variable.data.VariableReference;
         if (symbols.get(varvar.name)) |ob| {
@@ -72,22 +72,22 @@ pub fn analyzeAssignment(node: ASTNode, symbols: *std.StringHashMap(Object)) !vo
     }
 }
 
-pub fn analyzeFunctionDeclaration(node: ASTNode, symbols: *std.StringHashMap(Object)) !void {
+pub fn analyzeFunctionDeclaration(node: *ASTNode, symbols: *std.StringHashMap(Object)) !void {
     if (node.kind != .FunctionDeclaration) {
         std.debug.print("Expected FunctionDeclaration node got {}\n", .{node.kind});
         return error.UnexpectedNodeType;
     }
     switch (node.kind) {
         .FunctionDeclaration => {
-            const name = node.data.FunctionDeclaration.name;
+            const name = node.*.data.FunctionDeclaration.name;
 
-            const body = node.data.FunctionDeclaration.body;
+            const body = node.*.data.FunctionDeclaration.body;
 
-            const fn_type = node.data.FunctionDeclaration.fn_type;
+            const fn_type = node.*.data.FunctionDeclaration.fn_type;
 
-            const params = node.data.FunctionDeclaration.parameters;
+            const params = node.*.data.FunctionDeclaration.parameters;
 
-            const value = node.data.FunctionDeclaration.value;
+            const value = node.*.data.FunctionDeclaration.value;
 
             if (symbols.get(name)) |_| {
                 return error.FunctionRedeclarationError;
