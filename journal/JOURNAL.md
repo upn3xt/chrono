@@ -333,3 +333,10 @@ It's been like a week since I tried to get this thing working but school and laz
 I opened a different chat to help me fix the problem and there were two exactly: Not making the module based on the current context and not using the function 
 version constant rather than llvmsometypeyadayada. The moment clean llvm code got generated in the sample file(main.c) I was so happy!! Now I just gotta fix 
 another issue which is the getnamedfunction. As soon this flies, its fireworks!
+
+
+## Garbage garbage garbage \@/ 
+
+Now function calls are a thing.. Kind of. I used the ducktape approach and it works!.. But now theres poop all over the place. Got a dangling pointer in my 
+hands guys. Where? HA! you wish I knew.... In a code with 2000+ lines of code you want ME to find a dangling pointer? IT COULD ANYWHERE! I have to find this 
+to properly get printf to work.

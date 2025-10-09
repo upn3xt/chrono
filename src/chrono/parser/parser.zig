@@ -325,6 +325,7 @@ pub fn parseFunctionDeclaration(self: *Parser) !ASTNode {
 
     if (self.current_token.token_type != .IDENTIFIER) try self.errorHandler(error.ExpectedIdentifierError);
     const fn_name = self.current_token.lexeme;
+    std.debug.print("function {s}\n", .{fn_name});
 
     try self.advance();
 
