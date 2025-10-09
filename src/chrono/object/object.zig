@@ -1,5 +1,4 @@
-// const Types = @import("../types/types.zig").Types;
-const Type = @import("../ast/ast.zig").Type;
+const Type = @import("../types/types.zig").Type;
 
 const Object = @This();
 

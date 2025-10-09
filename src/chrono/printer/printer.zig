@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const Token = @import("../token/token.zig");
-const ASTNode = @import("../ast/ast.zig");
+const ASTNode = @import("../ast/ast.zig").ASTNode;
 
 const Printer = @This();
 

@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const ASTNode = @import("../../chrono/ast/ast.zig");
+const ASTNode = @import("../../chrono/ast/ast.zig").ASTNode;
 
 const Walker = @This();
 const llvm = @cImport({

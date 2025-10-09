@@ -1,58 +1,56 @@
-const ASTNode = @This();
-const astnode = @import("../ast/ast.zig");
+pub const Type = @import("../types/types.zig").Type;
+pub const ASTNode = struct {
+    kind: NodeKind,
+    data: union(NodeKind) {
+        VariableDeclaration: struct {
+            name: []const u8,
+            var_type: Type,
+            expression: ?*ASTNode,
+            mutable: bool,
+        },
 
-pub const Type = enum { Int, Float, String, Bool, Char, Void };
+        VariableReference: struct { name: []const u8, mutable: bool = false },
 
-kind: NodeKind,
-data: union(NodeKind) {
-    VariableDeclaration: struct {
-        name: []const u8,
-        var_type: Type,
-        expression: ?*ASTNode,
-        mutable: bool,
+        NumberLiteral: struct {
+            value: i64,
+        },
+
+        StringLiteral: struct { value: []const u8 },
+
+        CharLiteral: struct { value: u8 },
+
+        BinaryOperation: struct {
+            left: *ASTNode,
+            operator: u8,
+            right: *ASTNode,
+        },
+
+        Assignment: struct {
+            variable: *ASTNode,
+            asg_type: ?Type = null,
+            expression: *ASTNode,
+        },
+
+        FunctionDeclaration: struct {
+            name: []const u8,
+            fn_type: Type,
+            body: []*ASTNode,
+            parameters: ?[]*ASTNode = null,
+            value: ?[]const u8 = null,
+        },
+
+        FunctionReference: struct { name: []const u8, arguments: ?[]*ASTNode = null },
+
+        Parameter: struct {
+            name: []const u8,
+            par_type: Type,
+        },
+
+        Return: struct {
+            value: *ASTNode,
+        },
     },
-
-    VariableReference: struct { name: []const u8, mutable: bool = false },
-
-    NumberLiteral: struct {
-        value: i64,
-    },
-
-    StringLiteral: struct { value: []const u8 },
-
-    CharLiteral: struct { value: u8 },
-
-    BinaryOperation: struct {
-        left: *ASTNode,
-        operator: u8,
-        right: *ASTNode,
-    },
-
-    Assignment: struct {
-        variable: *ASTNode,
-        asg_type: ?Type = null,
-        expression: *ASTNode,
-    },
-
-    FunctionDeclaration: struct {
-        name: []const u8,
-        fn_type: Type,
-        body: []ASTNode,
-        parameters: ?[]*ASTNode = null,
-        value: ?[]const u8 = null,
-    },
-
-    FunctionReference: struct { name: []const u8, arguments: ?[]ASTNode = null },
-
-    Parameter: struct {
-        name: []const u8,
-        par_type: Type,
-    },
-
-    Return: struct {
-        value: ASTNode,
-    },
-},
+};
 
 pub const NodeKind = enum {
     VariableDeclaration,

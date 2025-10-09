@@ -1,9 +1,9 @@
 const std = @import("std");
 
 const IndieAnalyzer = @import("../../chrono/analyzer/indieanalyzer.zig");
-const ASTNode = @import("../../chrono/ast/ast.zig");
+const ASTNode = @import("../../chrono/ast/ast.zig").ASTNode;
 const Object = @import("../../chrono/object/object.zig");
-const Type = ASTNode.Type;
+const Type = @import("../types/types.zig").Type;
 const Token = @import("../token/token.zig");
 
 var vars = std.StringHashMap(Object).init(std.heap.page_allocator);
@@ -484,6 +484,8 @@ pub fn semiAndGo(self: *Parser) !void {
 }
 
 pub fn parseReturn(self: *Parser) !ASTNode {
+    // const node = try self.allocator.create(ASTNode);
+    // const exp = try self.allocator.create(ASTNode);
     var node: ASTNode = undefined;
     var exp: ASTNode = undefined;
     try self.advance();
@@ -510,7 +512,7 @@ pub fn parseReturn(self: *Parser) !ASTNode {
 
     try self.advance();
 
-    node = .{ .kind = .Return, .data = .{ .Return = exp } };
+    node = .{ .kind = .Return, .data = .{ .Return = .{ .value = &exp } } };
     return node;
 }
 

@@ -346,3 +346,9 @@ to properly get printf to work.
 I can't even compile my code anymore because there's a circular dependency error going on (apparently) on the parser and ast but ofc this just exists the moment 
 function calls stop being a problem. This is so stupid. And previously hit a half segfault(don't even ask me how is that possible) and need to make it right 
 before printf.
+
+
+## Recursion, pointers and refactoring 
+
+AI is a blessing at times like this. GPT said that ASTNode as main struct would create a circular dependency cycle since im doing SomeField: ASTNode ←  this 
+is the circular point. The fix is simple using pointers. I know that a while ago I said that pointers were bad so guess what? They're not. And a massive refactor is coming.
