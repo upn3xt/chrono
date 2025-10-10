@@ -2,13 +2,12 @@ fn bro(y: i32) i32 {
     const x = 90;
 }
 
-fn nothing() i32 {
-  
-}
+// fn nothing() i32 {
+//
+// }
 fn main() void {
   var t = 20;
   const y = 20;
   t = 2000;
-  nothing();
-  // bro(90);
+  bro(90);
 }

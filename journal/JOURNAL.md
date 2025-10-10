@@ -357,3 +357,10 @@ is the circular point. The fix is simple using pointers. I know that a while ago
 ## Set a world record for refactor cause I'm just like that! 
 
 Made a the previous commit like 10 mins ago and the massive refactoring is done in less time.
+
+## Too many lists and allocators!
+
+I WILL pause the project to refactor the walker. The duck tape aint doin it no muh :( and to be honest it's about time I done this. Like, the allocator waste 
+is massive. And I believe that somewhere between the analyzer and the walker the symbol table might be the solution to something else. Btw scope resolution 
+is the reason why things are the way they are right now. I was generating invalid parameters which when calling the code, it segfaults almost immediately.
+Anyway, that's work for the future.
