@@ -364,3 +364,8 @@ I WILL pause the project to refactor the walker. The duck tape aint doin it no m
 is massive. And I believe that somewhere between the analyzer and the walker the symbol table might be the solution to something else. Btw scope resolution 
 is the reason why things are the way they are right now. I was generating invalid parameters which when calling the code, it segfaults almost immediately.
 Anyway, that's work for the future.
+
+
+## Bruh I'm bored and confused
+
+It's so incredible that even people that develop the code can have a hard time while reading and understanding the code they wrote themselves! It's priceless and that's my case! Anyway, just making a restore point so I don't lose progress in this new code generator.
