@@ -15,7 +15,7 @@ const BuilderRef = llvm.LLVMBuilderRef;
 const Function = struct {
     func: ValueRef,
     func_type: TypeRef,
-    args: []TypeRef,
+    args: ?[]TypeRef,
     args_len: usize,
 };
 
@@ -37,7 +37,7 @@ pub fn init(allocator: std.mem.Allocator) Codegen {
     };
 }
 
-pub fn buildFile(filename: []const u8, nodes: []*ASTNode) !void {
+pub fn buildFile(self: *Codegen, filename: []const u8, nodes: []*ASTNode) !void {
     const context = llvm.LLVMContextCreate();
     defer llvm.LLVMContextDispose(context);
 
@@ -47,7 +47,7 @@ pub fn buildFile(filename: []const u8, nodes: []*ASTNode) !void {
     const builder = llvm.LLVMCreateBuilder();
     defer llvm.LLVMDisposeBuilder(builder);
 
-    try walk(nodes, module, context, builder);
+    try self.walk(nodes, module, context, builder);
 
     const output_path = "output/main.o";
     try emitObjectFile(module, output_path);
@@ -59,20 +59,20 @@ pub fn walk(self: *Codegen, nodes: []*ASTNode, module: ModuleRef, context: Conte
     var global_vars =
         std.StringHashMap(ValueRef).init(self.allocator);
     var global_fns =
-        std.StringHashMap(ValueRef).init(self.allocator);
+        std.StringHashMap(Function).init(self.allocator);
     // Make a map for: functions and variables
     // For functions make a map for parameters
     for (nodes) |node| {
         switch (node.*.kind) {
-            .FunctionDeclaration => try createFunction(node, context, module, builder, &global_fns),
-            .VariableDeclaration => try createVariable(node, context, builder, &global_vars),
-            .FunctionReference => try functionCall(node, builder, module),
+            .FunctionDeclaration => try self.createFunction(node, context, module, builder, &global_fns),
+            .VariableDeclaration => try self.createVariable(node, context, module, builder, &global_vars),
+            .FunctionReference => try self.functionCall(node, context, module, builder, &global_fns),
             else => unreachable,
         }
     }
 }
 
-pub fn createVariable(node: *ASTNode, context: ContextRef, module: ModuleRef, builder: llvm.LLVMBuilderRef, map: *std.StringHashMap(ValueRef)) !void {
+pub fn createVariable(_: *Codegen, node: *ASTNode, context: ContextRef, module: ModuleRef, builder: llvm.LLVMBuilderRef, map: *std.StringHashMap(ValueRef)) !void {
     if (node.*.kind != .VariableDeclaration) {
         std.debug.print("{}\n", .{node.*.kind});
         return error.ExpectedVariableDeclarationNode;
@@ -82,9 +82,6 @@ pub fn createVariable(node: *ASTNode, context: ContextRef, module: ModuleRef, bu
     switch (varvar.var_type) {
         .Int => {
             const i32_type = llvm.LLVMInt32TypeInContext(context);
-            // var name_buffer: [64]u8 = undefined;
-            // _ = @memcpy(name_buffer[0..varvar.name.len], varvar.name);
-            // name_buffer[varvar.name.len] = 0; // null terminate
             const variable = llvm.LLVMBuildAlloca(builder, i32_type, varvar.name.ptr);
 
             if (varvar.expression) |exp| {
@@ -99,7 +96,7 @@ pub fn createVariable(node: *ASTNode, context: ContextRef, module: ModuleRef, bu
     _ = module;
 }
 
-pub fn reassignment(node: *ASTNode, context: ContextRef, module: ModuleRef, builder: BuilderRef, map: *std.StringHashMap(ValueRef)) !void {
+pub fn reassignment(_: *Codegen, node: *ASTNode, context: ContextRef, module: ModuleRef, builder: BuilderRef, map: *std.StringHashMap(ValueRef)) !void {
     if (node.*.kind != .Assignment) {
         std.debug.print("{}\n", .{node.*.kind});
         return error.ExpectedAssignmentNode;
@@ -127,7 +124,7 @@ pub fn reassignment(node: *ASTNode, context: ContextRef, module: ModuleRef, buil
     _ = module;
 }
 
-pub fn createFunction(self: *Codegen, node: *ASTNode, context: ContextRef, module: ModuleRef, builder: BuilderRef) !void {
+pub fn createFunction(self: *Codegen, node: *ASTNode, context: ContextRef, module: ModuleRef, builder: BuilderRef, globfuncs: *std.StringHashMap(Function)) !void {
     if (node.*.kind != .FunctionDeclaration) {
         std.debug.print("Expected FunctionDeclarationNode got {}\n", .{node.*.kind});
         return error.ExpectedFunctionDeclarationNode;
@@ -157,11 +154,13 @@ pub fn createFunction(self: *Codegen, node: *ASTNode, context: ContextRef, modul
             const entry_bb = llvm.LLVMAppendBasicBlock(func, "entry");
             llvm.LLVMPositionBuilderAtEnd(builder, entry_bb);
             var vars = std.StringHashMap(ValueRef).init(self.allocator);
+            var funcs =
+                std.StringHashMap(Function).init(self.allocator);
             for (nfunc.body) |b| {
                 switch (b.kind) {
-                    .VariableDeclaration => try createVariable(b, context, builder, &vars),
-                    .Assignment => try reassignment(b, context, builder, &vars),
-                    .FunctionReference => try functionCall(b, builder, module),
+                    .VariableDeclaration => try self.createVariable(b, context, module, builder, &vars),
+                    .Assignment => try self.reassignment(b, context, module, builder, &vars),
+                    .FunctionReference => try self.functionCall(b, context, module, builder, &funcs),
                     .Return => break,
                     else => unreachable,
                 }
@@ -169,7 +168,10 @@ pub fn createFunction(self: *Codegen, node: *ASTNode, context: ContextRef, modul
 
             const ret_val = llvm.LLVMConstInt(llvm.LLVMInt32Type(), 0, 0);
 
+            try globfuncs.put(nfunc.name, .{ .func = func, .args = null, .args_len = 0, .func_type = func_type });
             _ = llvm.LLVMBuildRet(builder, ret_val);
+        } else {
+            // work here
         }
         // if (paramslist.count() >= 1) {
         //     // pass items to pamslist_items
@@ -181,9 +183,43 @@ pub fn createFunction(self: *Codegen, node: *ASTNode, context: ContextRef, modul
         //
         // const funRef = llvm.LLVMAddFunction(module, nfunc.name.ptr, func_type);
     }
+
+    const func_type = llvm.LLVMFunctionType(llvm.LLVMInt32Type(), null, 0, 0);
+    const func = llvm.LLVMAddFunction(module, nfunc.name.ptr, func_type);
+    const entry_bb = llvm.LLVMAppendBasicBlock(func, "entry");
+    llvm.LLVMPositionBuilderAtEnd(builder, entry_bb);
+    var vars = std.StringHashMap(ValueRef).init(self.allocator);
+    var funcs =
+        std.StringHashMap(Function).init(self.allocator);
+    for (nfunc.body) |b| {
+        switch (b.kind) {
+            .VariableDeclaration => try self.createVariable(b, context, module, builder, &vars),
+            .Assignment => try self.reassignment(b, context, module, builder, &vars),
+            .FunctionReference => try self.functionCall(b, context, module, builder, &funcs),
+            .Return => break,
+            else => unreachable,
+        }
+    }
+
+    const ret_val = llvm.LLVMConstInt(llvm.LLVMInt32Type(), 0, 0);
+
+    try globfuncs.put(nfunc.name, .{ .func = func, .args = null, .args_len = 0, .func_type = func_type });
+    _ = llvm.LLVMBuildRet(builder, ret_val);
 }
 
-pub fn functionCall(node: *ASTNode, context: ContextRef, module: ModuleRef, builder: BuilderRef) !void {}
+pub fn functionCall(_: *Codegen, node: *ASTNode, context: ContextRef, module: ModuleRef, builder: BuilderRef, funcmap: *std.StringHashMap(Function)) !void {
+    const nfunc = node.*.data.FunctionReference;
+    const function = funcmap.get(nfunc.name) orelse return error.FunctionNull;
+    if (function.args) |args| {
+        const call = llvm.LLVMBuildCall2(builder, function.func_type, function.func, args.ptr, @intCast(function.args_len), nfunc.name.ptr);
+        _ = llvm.LLVMBuildRet(builder, call);
+    }
+
+    const call = llvm.LLVMBuildCall2(builder, function.func_type, function.func, null, @intCast(function.args_len), nfunc.name.ptr);
+    _ = llvm.LLVMBuildRet(builder, call);
+    _ = module;
+    _ = context;
+}
 
 pub fn emitObjectFile(
     module: ModuleRef,

@@ -7,6 +7,7 @@ const ASTNode = @import("../ast/ast.zig").ASTNode;
 const Object = @import("../object/object.zig");
 const Printer = @import("../printer/printer.zig");
 const Walker = @import("../codegen/walker.zig");
+const Codegen = @import("../codegen/codegen.zig");
 const Builder = @This();
 
 const llvm = @cImport({
@@ -54,7 +55,10 @@ pub fn build() !void {
 
     std.debug.print("LLVM Emit Object...\n", .{});
 
-    try Walker.buildFile(filename, nodes);
+    var codegener = Codegen.init(allocator);
+
+    try codegener.buildFile(filename, nodes);
+    // try Walker.buildFile(filename, nodes);
 
     std.debug.print("Emition done!\n", .{});
 

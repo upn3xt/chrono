@@ -369,3 +369,15 @@ Anyway, that's work for the future.
 ## Bruh I'm bored and confused
 
 It's so incredible that even people that develop the code can have a hard time while reading and understanding the code they wrote themselves! It's priceless and that's my case! Anyway, just making a restore point so I don't lose progress in this new code generator.
+
+
+## Feels like a step back 
+
+Since I've been reworking on the code generator it really seems like a step back. Not a good one tho, feels like this is taking longer than it should and 
+procrastinating just makes it worse. I want to understand my code. The previous walker was dangerous and poorly written but it worked. I don't want to make that 
+mistake but iteration at this rate just seems worse on paper. On the other hand, scope resolution works better than ever. Since those are variables that live in 
+the context(block) or are global, passing a map and look for it is just nice. This resolution is one of the few things I'm proud of in this sense. And man 
+parameters suck. These are the only reason I'm not moving forward. There's still other types to work with such as string, chars and booleans and yet just 
+integers are causing a lot of pain. Maybe in the future, before actually making the language written in itself, I make a better and more documented backend for 
+language creation. It could be llvm based or written intirely from scratch(this is such a bad idea) and it would just be quick. The only real work in a language 
+in 2025 should be STL's, Frameworks and Comptime checks. ANYWAY, the new codegen is just starting to work but there's still errors and parameters to work on.
