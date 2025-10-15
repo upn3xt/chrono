@@ -381,3 +381,9 @@ parameters suck. These are the only reason I'm not moving forward. There's still
 integers are causing a lot of pain. Maybe in the future, before actually making the language written in itself, I make a better and more documented backend for 
 language creation. It could be llvm based or written intirely from scratch(this is such a bad idea) and it would just be quick. The only real work in a language 
 in 2025 should be STL's, Frameworks and Comptime checks. ANYWAY, the new codegen is just starting to work but there's still errors and parameters to work on.
+
+
+## WHOLE LOTTA TRASH - LESS EACH TIME, MORE REWORK BECAUSE 
+
+The garbage problem is back and now even the previous solution isn't 100% effective, but now the code generator is better each time. The amount of rework tho 
+is kinda ahh.
