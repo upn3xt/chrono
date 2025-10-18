@@ -5,7 +5,7 @@ pub const ASTNode = struct {
         VariableDeclaration: struct {
             name: []const u8,
             var_type: Type,
-            expression: ?*ASTNode,
+            expression: *ASTNode,
             mutable: bool,
         },
 
@@ -27,7 +27,7 @@ pub const ASTNode = struct {
 
         Assignment: struct {
             variable: *ASTNode,
-            asg_type: ?Type = null,
+            asg_type: Type,
             expression: *ASTNode,
         },
 
@@ -35,11 +35,11 @@ pub const ASTNode = struct {
             name: []const u8,
             fn_type: Type,
             body: []*ASTNode,
-            parameters: ?[]*ASTNode = null,
-            value: ?[]const u8 = null,
+            parameters: []*ASTNode,
+            value: []const u8,
         },
 
-        FunctionReference: struct { name: []const u8, arguments: ?[]*ASTNode = null },
+        FunctionReference: struct { name: []const u8, arguments: []*ASTNode },
 
         Parameter: struct {
             name: []const u8,
@@ -49,6 +49,7 @@ pub const ASTNode = struct {
         Return: struct {
             value: *ASTNode,
         },
+        Undefined: struct {},
     },
 };
 
@@ -64,4 +65,5 @@ pub const NodeKind = enum {
     FunctionReference,
     Parameter,
     Return,
+    Undefined,
 };

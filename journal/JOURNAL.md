@@ -403,3 +403,9 @@ While making the AST back then, using null values was cool because it got the wo
 a headache. On the other side, parameter work is way more ellaborate and believe that it'll work soon enough, but I HAVE to make a stop to remove the 
 unnecessary null's and just make null checks on certain parts of the code that I don't own like the STl and the LLVM API. If I keep going with these nulls 
 it will lead me to rewriting all the project. It's either: handle a error, return a error, initialize or whatever else is better than just say null.
+
+
+## Nulls were the problem and now I'm getting closer to end this parameter saga 
+
+As much as I would like to keep coding and fixing all the problems today, there's still much to do and finally the code is starting to make sense. Also I will 
+be using more of the LLVM API instead of a bunch of arraylists and custom structs. It really just makes sense and avoids extra allocation.

@@ -1,6 +1,5 @@
 const std = @import("std");
 
-// const Type = @import("../types/types.zig").Type;
 const ASTNode = @import("../../chrono/ast/ast.zig").ASTNode;
 const Type = @import("../types/types.zig").Type;
 const Object = @import("../object/object.zig");
@@ -18,11 +17,7 @@ pub fn analyzeVariableDeclaration(node: *ASTNode, symbols: *std.StringHashMap(Ob
 
     var exp_type: Type = undefined;
 
-    if (exp == null) {
-        std.debug.print("Error, expression node for variable {s} is null.", .{name});
-        return error.ExpressionNodeNullError;
-    }
-    switch (exp.?.kind) {
+    switch (exp.kind) {
         .NumberLiteral => {
             exp_type = .Int;
         },
@@ -87,7 +82,7 @@ pub fn analyzeFunctionDeclaration(node: *ASTNode, symbols: *std.StringHashMap(Ob
 
             const params = node.*.data.FunctionDeclaration.parameters;
 
-            const value = node.*.data.FunctionDeclaration.value;
+            // const value = node.*.data.FunctionDeclaration.value;
 
             if (symbols.get(name)) |_| {
                 return error.FunctionRedeclarationError;
@@ -106,23 +101,21 @@ pub fn analyzeFunctionDeclaration(node: *ASTNode, symbols: *std.StringHashMap(Ob
                 }
             }
 
-            if (fn_type == .Void and value != null) {
+            if (fn_type == .Void) {
                 return error.FunctionReturnsWithVoidTypeError;
             }
 
             var parameters_syms = std.StringHashMap(Object).init(std.heap.page_allocator);
-            if (params) |pams| {
-                for (pams) |p| {
-                    switch (p.kind) {
-                        .Parameter => {
-                            if (p.data.Parameter.par_type == .Void) return error.InvalidParameterType;
-                            if (parameters_syms.get(p.data.Parameter.name)) |_| {
-                                return error.RedeclarationOfParameterError;
-                            }
-                            try parameters_syms.put(p.data.Parameter.name, .{ .identifier = p.data.Parameter.name, .mutable = true, .obtype = p.data.Parameter.par_type });
-                        },
-                        else => unreachable,
-                    }
+            for (params) |p| {
+                switch (p.kind) {
+                    .Parameter => {
+                        if (p.data.Parameter.par_type == .Void) return error.InvalidParameterType;
+                        if (parameters_syms.get(p.data.Parameter.name)) |_| {
+                            return error.RedeclarationOfParameterError;
+                        }
+                        try parameters_syms.put(p.data.Parameter.name, .{ .identifier = p.data.Parameter.name, .mutable = true, .obtype = p.data.Parameter.par_type });
+                    },
+                    else => unreachable,
                 }
             }
 

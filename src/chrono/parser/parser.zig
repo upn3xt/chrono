@@ -375,7 +375,8 @@ pub fn parseFunctionDeclaration(self: *Parser) !*ASTNode {
 
     try self.advance();
 
-    const ret_type = self.h_getType(self.current_token.lexeme) orelse return error.InvalidTypeError;
+    // const ret_type = self.h_getType(self.current_token.lexeme) orelse return error.InvalidTypeError;
+    const ret_type: Type = .Int;
 
     try self.advance();
 
@@ -385,8 +386,7 @@ pub fn parseFunctionDeclaration(self: *Parser) !*ASTNode {
     try self.advance();
 
     var body = std.array_list.Managed(*ASTNode).init(self.allocator);
-    var varsbody = std.StringHashMap(Object).init(std.heap.page_allocator);
-    // defer varsbody.deinit();
+    var varsbody = std.StringHashMap(Object).init(self.allocator);
 
     while (true) {
         switch (self.current_token.token_type) {
@@ -427,6 +427,7 @@ pub fn parseFunctionDeclaration(self: *Parser) !*ASTNode {
         .fn_type = ret_type,
         .parameters = parameters.items,
         .body = body.items,
+        .value = "",
     } } };
 
     try self.advance();
