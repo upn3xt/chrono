@@ -395,3 +395,11 @@ Fixed the garbage thing by using dupe instead of allocPrint, smart choice. It di
 needed the variable that was holding the value(the name of variables/functions/etc..) have a straight copy of the pointer's value instead of just a partial 
 allocation(don't know if that makes sense but I just understand). Also the concept of ownership and lifetimes is starting to make sense little by little.
 And finally that clean IR.
+
+
+## Null values are the problem 
+
+While making the AST back then, using null values was cool because it got the work done. Now this has catch up to me and the null check are becoming more than 
+a headache. On the other side, parameter work is way more ellaborate and believe that it'll work soon enough, but I HAVE to make a stop to remove the 
+unnecessary null's and just make null checks on certain parts of the code that I don't own like the STl and the LLVM API. If I keep going with these nulls 
+it will lead me to rewriting all the project. It's either: handle a error, return a error, initialize or whatever else is better than just say null.
