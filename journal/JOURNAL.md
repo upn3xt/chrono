@@ -387,3 +387,11 @@ in 2025 should be STL's, Frameworks and Comptime checks. ANYWAY, the new codegen
 
 The garbage problem is back and now even the previous solution isn't 100% effective, but now the code generator is better each time. The amount of rework tho 
 is kinda ahh.
+
+
+## Ownership, lifetimes and clean IR
+
+Fixed the garbage thing by using dupe instead of allocPrint, smart choice. It did cross my mind b4 but I didn't want my compiler to be slow. But it really 
+needed the variable that was holding the value(the name of variables/functions/etc..) have a straight copy of the pointer's value instead of just a partial 
+allocation(don't know if that makes sense but I just understand). Also the concept of ownership and lifetimes is starting to make sense little by little.
+And finally that clean IR.

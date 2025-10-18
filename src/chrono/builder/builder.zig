@@ -6,7 +6,6 @@ const Parser = @import("../parser/parser.zig");
 const ASTNode = @import("../ast/ast.zig").ASTNode;
 const Object = @import("../object/object.zig");
 const Printer = @import("../printer/printer.zig");
-const Walker = @import("../codegen/walker.zig");
 const Codegen = @import("../codegen/codegen.zig");
 const Builder = @This();
 
@@ -58,7 +57,6 @@ pub fn build() !void {
     var codegener = Codegen.init(allocator);
 
     try codegener.buildFile(filename, nodes);
-    // try Walker.buildFile(filename, nodes);
 
     std.debug.print("Emition done!\n", .{});
 

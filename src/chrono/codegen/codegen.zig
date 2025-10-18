@@ -60,8 +60,6 @@ pub fn walk(self: *Codegen, nodes: []*ASTNode, module: ModuleRef, context: Conte
         std.StringHashMap(ValueRef).init(self.allocator);
     var global_fns =
         std.StringHashMap(Function).init(self.allocator);
-    // Make a map for: functions and variables
-    // For functions make a map for parameters
     for (nodes) |node| {
         switch (node.*.kind) {
             .FunctionDeclaration => try self.createFunction(node, context, module, builder, &global_fns),
@@ -79,7 +77,7 @@ pub fn createVariable(self: *Codegen, node: *ASTNode, context: ContextRef, modul
     }
 
     const varvar = node.*.data.VariableDeclaration;
-    const cname = try std.fmt.allocPrint(self.allocator, "{s}", .{varvar.name});
+    const cname = try std.mem.Allocator.dupe(self.allocator, u8, varvar.name);
     switch (varvar.var_type) {
         .Int => {
             const i32_type = llvm.LLVMInt32TypeInContext(context);
@@ -134,7 +132,7 @@ pub fn createFunction(self: *Codegen, node: *ASTNode, context: ContextRef, modul
         return error.ExpectedFunctionDeclarationNode;
     }
     const nfunc = node.*.data.FunctionDeclaration;
-    const cname = try std.fmt.allocPrint(self.allocator, "{s}", .{nfunc.name});
+    const cname = try std.mem.Allocator.dupe(self.allocator, u8, nfunc.name);
     var paramslist = std.array_list.Managed(Parameter).init(self.allocator);
 
     // var pamslist_items: ?[]Parameter = null;
