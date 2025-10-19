@@ -182,7 +182,7 @@ pub fn createFunction(self: *Codegen, node: *ASTNode, context: ContextRef, modul
         }
     }
 
-    const func_type = llvm.LLVMFunctionType(llvm.LLVMInt32Type(), llvmparams.items.ptr, @intCast(llvmparams.items.len), 0);
+    const func_type = llvm.LLVMFunctionType(llvm.LLVMInt32Type(), llvmparams.items.ptr, @intCast(llvmparams.items.len), 0) orelse return error.FnTypeNull;
     const function = llvm.LLVMAddFunction(module, cname.ptr, func_type);
     llvm.LLVMSetFunctionCallConv(function, 0);
 
@@ -218,10 +218,21 @@ pub fn functionCall(self: *Codegen, node: *ASTNode, context: ContextRef, module:
     const cname = try std.mem.Allocator.dupe(self.allocator, u8, nfunc.name);
 
     const function = llvm.LLVMGetNamedFunction(module, cname.ptr) orelse return error.FunctionNull;
-    const func_type = llvm.LLVMTypeOf(function) orelse return error.TypeOfFunctionNull;
-    //
+
+    // get function type (unwrap pointer-to-func if necessary)
+    var t = llvm.LLVMTypeOf(function);
+    if (llvm.LLVMGetTypeKind(t) == llvm.LLVMPointerTypeKind) {
+        t = llvm.LLVMGetElementType(t);
+        if (t == null) return error.FnTypeNull;
+    }
+    const func_type = t;
+
+    if (llvm.LLVMGetInsertBlock(builder) == null) {
+        return error.BuilderNotPositioned;
+    }
 
     var args = std.array_list.Managed(ValueRef).init(self.allocator);
+    defer args.deinit();
 
     for (nfunc.arguments) |arg| {
         switch (arg.*.kind) {
@@ -234,30 +245,70 @@ pub fn functionCall(self: *Codegen, node: *ASTNode, context: ContextRef, module:
     }
 
     if (args.items.len != nfunc.arguments.len) return error.ArgumentCountMistach;
-    if (llvm.LLVMGetInsertBlock(builder) == null) {
-        const entry_block = llvm.LLVMGetEntryBasicBlock(function);
-        llvm.LLVMPositionBuilderAtEnd(builder, entry_block);
-        std.debug.print("NULL\n", .{});
+
+    // optional: verify types match param types
+    for (0..args.items.len) |i| {
+        const expected_param = llvm.LLVMGetParam(function, @intCast(i));
+        const expected = llvm.LLVMTypeOf(expected_param);
+        const actual = llvm.LLVMTypeOf(args.items[i]);
+        if (expected != actual) return error.ArgumentTypeMismatch;
     }
 
-    var call: ValueRef = undefined;
-
-    if (nfunc.arguments.len == 0) {
+    var call: ValueRef = null;
+    if (args.items.len == 0) {
         call = llvm.LLVMBuildCall2(builder, func_type, function, null, 0, cname.ptr);
     } else {
-        call = llvm.LLVMBuildCall2(builder, func_type, function, args.items.ptr, @intCast(args.items.len), cname.ptr);
+        call = llvm.LLVMBuildCall2(builder, func_type, function, args.items.ptr, @intCast(args.items.len), cname.ptr) orelse return error.BuildCallFailed;
     }
 
-    var error_msg: [*c]u8 = null;
-    if (llvm.LLVMVerifyModule(module, llvm.LLVMReturnStatusAction, &error_msg) != 0) {
-        std.debug.print("Module verification error: {s}\n", .{error_msg});
-        llvm.LLVMDisposeMessage(error_msg);
-        return;
-    }
-    _ = llvm.LLVMBuildRet(builder, call);
+    // do NOT build a return here. Return the call value to the caller if they need it.
+    // return call;
     _ = context;
     _ = funcmap;
 }
+//
+// pub fn functionCall(self: *Codegen, node: *ASTNode, context: ContextRef, module: ModuleRef, builder: BuilderRef, funcmap: *std.StringHashMap(Function)) !void {
+//     const nfunc = node.*.data.FunctionReference;
+//     const cname = try std.mem.Allocator.dupe(self.allocator, u8, nfunc.name);
+//
+//     const function = llvm.LLVMGetNamedFunction(module, cname.ptr) orelse return error.FunctionNull;
+//
+//     const func_ptr_type = llvm.LLVMTypeOf(function);
+//     const func_type = llvm.LLVMGetElementType(func_ptr_type);
+//
+//     var args = std.array_list.Managed(ValueRef).init(self.allocator);
+//
+//     for (nfunc.arguments) |arg| {
+//         switch (arg.*.kind) {
+//             .NumberLiteral => {
+//                 const num = llvm.LLVMConstInt(llvm.LLVMInt32Type(), @intCast(arg.*.data.NumberLiteral.value), 0);
+//                 try args.append(num);
+//             },
+//             else => unreachable,
+//         }
+//     }
+//
+//     if (args.items.len != nfunc.arguments.len) return error.ArgumentCountMistach;
+//     if (llvm.LLVMGetInsertBlock(builder) == null) return error.BuilderNotPostionedCorrectly;
+//
+//     var call: ValueRef = undefined;
+//
+//     if (nfunc.arguments.len == 0) {
+//         call = llvm.LLVMBuildCall2(builder, func_type, function, null, 0, cname.ptr);
+//     } else {
+//         call = llvm.LLVMBuildCall2(builder, func_type, function, args.items.ptr, @intCast(args.items.len), cname.ptr) orelse return error.BuildCallFailed;
+//     }
+//
+//     var error_msg: [*c]u8 = null;
+//     if (llvm.LLVMVerifyModule(module, llvm.LLVMReturnStatusAction, &error_msg) != 0) {
+//         std.debug.print("Module verification error: {s}\n", .{error_msg});
+//         llvm.LLVMDisposeMessage(error_msg);
+//         return;
+//     }
+//     _ = llvm.LLVMBuildRet(builder, call);
+//     _ = context;
+//     _ = funcmap;
+// }
 
 pub fn emitObjectFile(
     module: ModuleRef,

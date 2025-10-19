@@ -10,5 +10,5 @@ fn main() void {
   const y = 20;
   t = 2000;
   // nothing();
-  bro(90);
+  bro(1);
 }
