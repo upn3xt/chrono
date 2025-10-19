@@ -217,34 +217,30 @@ pub fn functionCall(self: *Codegen, node: *ASTNode, context: ContextRef, module:
     const nfunc = node.*.data.FunctionReference;
     const cname = try std.mem.Allocator.dupe(self.allocator, u8, nfunc.name);
 
-    const function = llvm.LLVMGetNamedFunction(module, cname.ptr);
-    var params = std.array_list.Managed(TypeRef).init(self.allocator);
-    const func_type = llvm.LLVMGetTypeByName(module, cname.ptr);
-    for (0..nfunc.arguments.len) |i| {
-        const param = llvm.LLVMGetParam(function, @intCast(i));
-        try params.append(param);
+    const function = llvm.LLVMGetNamedFunction(module, cname.ptr) orelse return error.FunctionNull;
+    const func_type = llvm.LLVMTypeOf(function) orelse return error.TypeOfFunctionNull;
+
+    var args = std.array_list.Managed(ValueRef).init(self.allocator);
+
+    for (nfunc.arguments) |arg| {
+        switch (arg.*.kind) {
+            .NumberLiteral => {
+                const num = llvm.LLVMConstInt(llvm.LLVMInt32Type(), @intCast(arg.*.data.NumberLiteral.value), 0);
+                try args.append(num);
+            },
+            else => unreachable,
+        }
     }
 
     if (nfunc.arguments.len == 0) {
         const call = llvm.LLVMBuildCall2(builder, func_type, function, null, 0, cname.ptr);
         _ = llvm.LLVMBuildRet(builder, call);
+        return;
     }
-    const call = llvm.LLVMBuildCall2(builder, func_type, function, params.items.ptr, 0, cname.ptr);
+    const call = llvm.LLVMBuildCall2(builder, func_type, function, args.items.ptr, @intCast(args.items.len), cname.ptr);
     _ = llvm.LLVMBuildRet(builder, call);
     _ = context;
     _ = funcmap;
-    // const function = funcmap.get(cname) orelse {
-    //     std.debug.print("Couldn't get function: {s}\n", .{cname});
-    //     return error.FunctionNull;
-    // };
-    // if (function.args) |args| {
-    //     const call = llvm.LLVMBuildCall2(builder, function.func_type, function.func, args.ptr, @intCast(function.args_len), cname.ptr);
-    //     _ = llvm.LLVMBuildRet(builder, call);
-    //     return;
-    // }
-    //
-    // _ = module;
-    // _ = context;
 }
 
 pub fn emitObjectFile(
