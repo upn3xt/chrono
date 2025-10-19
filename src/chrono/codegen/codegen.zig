@@ -219,6 +219,7 @@ pub fn functionCall(self: *Codegen, node: *ASTNode, context: ContextRef, module:
 
     const function = llvm.LLVMGetNamedFunction(module, cname.ptr) orelse return error.FunctionNull;
     const func_type = llvm.LLVMTypeOf(function) orelse return error.TypeOfFunctionNull;
+    //
 
     var args = std.array_list.Managed(ValueRef).init(self.allocator);
 
@@ -232,12 +233,27 @@ pub fn functionCall(self: *Codegen, node: *ASTNode, context: ContextRef, module:
         }
     }
 
+    if (args.items.len != nfunc.arguments.len) return error.ArgumentCountMistach;
+    if (llvm.LLVMGetInsertBlock(builder) == null) {
+        const entry_block = llvm.LLVMGetEntryBasicBlock(function);
+        llvm.LLVMPositionBuilderAtEnd(builder, entry_block);
+        std.debug.print("NULL\n", .{});
+    }
+
+    var call: ValueRef = undefined;
+
     if (nfunc.arguments.len == 0) {
-        const call = llvm.LLVMBuildCall2(builder, func_type, function, null, 0, cname.ptr);
-        _ = llvm.LLVMBuildRet(builder, call);
+        call = llvm.LLVMBuildCall2(builder, func_type, function, null, 0, cname.ptr);
+    } else {
+        call = llvm.LLVMBuildCall2(builder, func_type, function, args.items.ptr, @intCast(args.items.len), cname.ptr);
+    }
+
+    var error_msg: [*c]u8 = null;
+    if (llvm.LLVMVerifyModule(module, llvm.LLVMReturnStatusAction, &error_msg) != 0) {
+        std.debug.print("Module verification error: {s}\n", .{error_msg});
+        llvm.LLVMDisposeMessage(error_msg);
         return;
     }
-    const call = llvm.LLVMBuildCall2(builder, func_type, function, args.items.ptr, @intCast(args.items.len), cname.ptr);
     _ = llvm.LLVMBuildRet(builder, call);
     _ = context;
     _ = funcmap;
