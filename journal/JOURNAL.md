@@ -409,3 +409,8 @@ it will lead me to rewriting all the project. It's either: handle a error, retur
 
 As much as I would like to keep coding and fixing all the problems today, there's still much to do and finally the code is starting to make sense. Also I will 
 be using more of the LLVM API instead of a bunch of arraylists and custom structs. It really just makes sense and avoids extra allocation.
+
+## Segmentation fault hell 
+
+It was my fault to celebrate early. It's been a whole week since I'm stuck in this shit. BuildCall2 is always segfaulting even with (what I assume is) correct 
+arguments. Valid memory addresses but still something is wrong. I'm in this debug saga trying to find where shit got all wrong to not work.
