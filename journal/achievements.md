@@ -78,3 +78,28 @@ Kind: BinaryOperator
 	Left: chrono.ast{ .kind = chrono.ast.NodeKind.NumberLiteral, .data = chrono.ast__union_23960{ .NumberLiteral = chrono.ast__union_23960__struct_23963{ .value = 10 } } }
 Operator: +
 Right: chrono.ast{ .kind = chrono.ast.NodeKind.NumberLiteral, .data = chrono.ast__union_23960{ .NumberLiteral = chrono.ast__union_23960__struct_23963{ .value = 20 } } }
+
+
+## First function call
+
+ModuleID = 'assig.chro'
+source_filename = "assig.chro"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+define i32 @bro(i32 %x) {
+entry:
+  %w = alloca i32, align 4
+  ret i32 0
+}
+
+define i32 @main() {
+entry:
+  %t = alloca i32, align 4
+  store i32 20, ptr %t, align 4
+  %y = alloca i32, align 4
+  store i32 2000, ptr %t, align 4
+  %bro = call i32 @bro(i32 1)
+  ret i32 0
+}
+Emition done!

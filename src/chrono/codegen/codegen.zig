@@ -142,18 +142,18 @@ pub fn createFunction(self: *Codegen, node: *ASTNode, context: ContextRef, modul
         const function = llvm.LLVMAddFunction(module, cname.ptr, func_type);
         llvm.LLVMSetFunctionCallConv(function, 0);
 
-        const bb = llvm.LLVMAppendBasicBlock(function, "entry");
+        const bb = llvm.LLVMAppendBasicBlockInContext(context, function, "entry");
         llvm.LLVMPositionBuilderAtEnd(builder, bb);
 
         var xvars =
             std.StringHashMap(ValueRef).init(self.allocator);
-        var xfuncs =
-            std.StringHashMap(Function).init(self.allocator);
+        // var xfuncs =
+        //     std.StringHashMap(Function).init(self.allocator);
         for (nfunc.body) |b| {
             switch (b.kind) {
                 .VariableDeclaration => try self.createVariable(b, context, module, builder, &xvars),
                 .Assignment => try self.reassignment(b, context, module, builder, &xvars),
-                .FunctionReference => try self.functionCall(b, context, module, builder, &xfuncs),
+                .FunctionReference => try self.functionCall(b, context, module, builder, funcs),
                 .Return => break,
                 else => unreachable,
             }
@@ -182,7 +182,9 @@ pub fn createFunction(self: *Codegen, node: *ASTNode, context: ContextRef, modul
         }
     }
 
-    const func_type = llvm.LLVMFunctionType(llvm.LLVMInt32TypeInContext(context), llvmparams.items.ptr, @intCast(llvmparams.items.len), 0) orelse return error.FnTypeNull;
+    const params_ptr = &llvmparams.items[0];
+    const func_type = llvm.LLVMFunctionType(llvm.LLVMInt32TypeInContext(context), params_ptr, @intCast(llvmparams.items.len), 0) orelse return error.FnTypeNull;
+
     const function = llvm.LLVMAddFunction(module, cname.ptr, func_type);
     llvm.LLVMSetFunctionCallConv(function, 0);
 
@@ -191,17 +193,18 @@ pub fn createFunction(self: *Codegen, node: *ASTNode, context: ContextRef, modul
         llvm.LLVMSetValueName(param, pname.ptr);
     }
 
-    const bb = llvm.LLVMAppendBasicBlock(function, "entry");
+    try funcs.put(cname, .{ .func = function, .args = llvmparams.items, .args_len = llvmparams.items.len, .func_type = func_type });
+    const bb = llvm.LLVMAppendBasicBlockInContext(context, function, "entry");
     llvm.LLVMPositionBuilderAtEnd(builder, bb);
     var xvars =
         std.StringHashMap(ValueRef).init(self.allocator);
-    var xfuncs =
-        std.StringHashMap(Function).init(self.allocator);
+    // var xfuncs =
+    //     std.StringHashMap(Function).init(self.allocator);
     for (nfunc.body) |b| {
         switch (b.kind) {
             .VariableDeclaration => try self.createVariable(b, context, module, builder, &xvars),
             .Assignment => try self.reassignment(b, context, module, builder, &xvars),
-            .FunctionReference => try self.functionCall(b, context, module, builder, &xfuncs),
+            .FunctionReference => try self.functionCall(b, context, module, builder, funcs),
             .Return => break,
             else => unreachable,
         }
@@ -209,7 +212,6 @@ pub fn createFunction(self: *Codegen, node: *ASTNode, context: ContextRef, modul
 
     const ret_val = llvm.LLVMConstInt(llvm.LLVMInt32TypeInContext(context), 0, 0);
 
-    try funcs.put(cname, .{ .func = function, .args = llvmparams.items, .args_len = llvmparams.items.len, .func_type = func_type });
     _ = llvm.LLVMBuildRet(builder, ret_val);
 }
 
@@ -220,6 +222,12 @@ pub fn functionCall(self: *Codegen, node: *ASTNode, context: ContextRef, module:
     const function = llvm.LLVMGetNamedFunction(module, cname.ptr) orelse return error.FunctionNull;
 
     const func_type = llvm.LLVMGetElementType(llvm.LLVMTypeOf(function));
+
+    const s1 = llvm.LLVMPrintTypeToString(func_type);
+    const s2 = llvm.LLVMPrintTypeToString(llvm.LLVMTypeOf(function));
+    std.debug.print("func_type: {s}\nval_type: {s}\n", .{ s1, s2 });
+    llvm.LLVMDisposeMessage(s1);
+    llvm.LLVMDisposeMessage(s2);
 
     // get function type (unwrap pointer-to-func if necessary)
     // var t = llvm.LLVMTypeOf(function);
@@ -277,10 +285,30 @@ pub fn functionCall(self: *Codegen, node: *ASTNode, context: ContextRef, module:
         // for (args.items) |a| {
         //     std.debug.assert(a != null);
         // }
-        call = llvm.LLVMBuildCall2(builder, func_type, function, args.items.ptr, @as(c_uint, @intCast(args.items.len)), cname.ptr) orelse return error.BuildCallFailed;
+
+        const result =
+            \\ builder: 0x{x}
+            \\ func_type: 0x{x}
+            \\ function: 0x{x}
+            \\ args.items.ptr: 0x{x}
+            \\ argument length: {}
+            \\ cname.ptr: 0x{x}
+            \\
+        ;
+        std.debug.print(result, .{
+            @intFromPtr(builder),
+            @intFromPtr(func_type),
+            @intFromPtr(function),
+            @intFromPtr(args.items.ptr),
+            @as(c_uint, @intCast(args.items.len)),
+            @intFromPtr(cname.ptr),
+        });
+        const args_ptr = &args.items[0];
+        const functionget = funcmap.get(cname) orelse return error.FunctionNull;
+        call = llvm.LLVMBuildCall2(builder, functionget.func_type, function, args_ptr, @as(c_uint, @intCast(args.items.len)), cname.ptr) orelse return error.BuildCallFailed;
     }
 
-    _ = funcmap;
+    // _ = funcmap;
 }
 
 pub fn emitObjectFile(

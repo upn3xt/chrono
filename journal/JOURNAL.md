@@ -414,3 +414,9 @@ be using more of the LLVM API instead of a bunch of arraylists and custom struct
 
 It was my fault to celebrate early. It's been a whole week since I'm stuck in this shit. BuildCall2 is always segfaulting even with (what I assume is) correct 
 arguments. Valid memory addresses but still something is wrong. I'm in this debug saga trying to find where shit got all wrong to not work.
+
+
+## I cheated and that's ok...
+
+Look, I knoww I needed to not use the maps but dammit some stuff is really that stupid and I can keep going for now. I'll paste the achievement of function 
+call on my code and that's it.
