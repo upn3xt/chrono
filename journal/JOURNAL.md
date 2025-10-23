@@ -426,3 +426,10 @@ call on my code and that's it.
 
 THE LANDMARK HAS BEEN REACHED! TODAY ON 23/10/2025 CHRONO HAS SPOKEN! IT SAID THE FIRST HELLO WORLD EVER!!! THIS WAS THE MILESTONE. I'M SO FUCKING PROUD OF 
 MYSELF AND THIS PROJECT.
+
+## Next steps
+
+Now that 'hello world' mark has been achieved, my plan is to still figure out how to make function calls without using maps. Every step of the way, I start 
+to understand what to do and not do. Also, external functions like printf are something that need a new way in. A new keyword or methodoly to do so. Maybe 
+like zig's way of interop or something more classy. Depends on me for real. After that I want to start to work on formatting and show calculation results.
+That's it for now.
