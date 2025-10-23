@@ -420,3 +420,9 @@ arguments. Valid memory addresses but still something is wrong. I'm in this debu
 
 Look, I knoww I needed to not use the maps but dammit some stuff is really that stupid and I can keep going for now. I'll paste the achievement of function 
 call on my code and that's it.
+
+
+## Hello world.
+
+THE LANDMARK HAS BEEN REACHED! TODAY ON 23/10/2025 CHRONO HAS SPOKEN! IT SAID THE FIRST HELLO WORLD EVER!!! THIS WAS THE MILESTONE. I'M SO FUCKING PROUD OF 
+MYSELF AND THIS PROJECT.

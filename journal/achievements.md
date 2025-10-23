@@ -103,3 +103,43 @@ entry:
   ret i32 0
 }
 Emition done!
+
+
+## Hello world
+
+   chrono   git:(main)  zig build run -freference-trace=10 -- ts/helloworld.chro
+Lines: 0
+Starting Tokenization...
+Tokenization done.
+Starting Parsing...
+function main
+fn main defined!
+Parsing done.
+LLVM Emit Object...
+func_type: half
+val_type: ptr
+func_type pointer: cimport.struct_LLVMOpaqueType@6eb44e0
+ builder: 0x6ebd000
+ func_type: 0x6eb44e0
+ function: 0x6ebe2c8
+ args.items.ptr: 0x7fa678720288
+ argument length: 1
+ cname.ptr: 0x7fa678720274
+; ModuleID = 'helloworld.chro'
+source_filename = "helloworld.chro"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
+
+@name = private unnamed_addr constant [13 x i8] c"Hello world!\00", align 1
+
+declare i32 @printf(ptr %0, ...)
+
+define i32 @main() {
+entry:
+  %0 = call i32 (ptr, ...) @printf(ptr @name)
+  ret i32 0
+}
+Emition done!
+   chrono   git:(main)  clang -fPIE output/main.o -o main
+   chrono   git:(main)  ./main
+Hello world!%                                                                                                                                                        chrono   git:(main)  

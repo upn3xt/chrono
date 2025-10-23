@@ -60,6 +60,8 @@ pub fn walk(self: *Codegen, nodes: []*ASTNode, module: ModuleRef, context: Conte
         std.StringHashMap(ValueRef).init(self.allocator);
     var global_fns =
         std.StringHashMap(Function).init(self.allocator);
+
+    try self.definePrintf(nodes[0], context, module, builder, &global_fns);
     for (nodes) |node| {
         switch (node.*.kind) {
             .FunctionDeclaration => try self.createFunction(node, context, module, builder, &global_fns),
@@ -70,6 +72,17 @@ pub fn walk(self: *Codegen, nodes: []*ASTNode, module: ModuleRef, context: Conte
     }
 }
 
+pub fn definePrintf(_: *Codegen, _: *ASTNode, context: ContextRef, module: ModuleRef, _: llvm.LLVMBuilderRef, map: *std.StringHashMap(Function)) !void {
+    const i8ptr = llvm.LLVMInt8TypeInContext(context);
+    var printf_args_types = [_]TypeRef{llvm.LLVMPointerType(i8ptr, 0)};
+    const printf_type = llvm.LLVMFunctionType(llvm.LLVMInt32TypeInContext(context), &printf_args_types[0], 1, 1) orelse return error.FailedToInitType;
+
+    const printf_func = llvm.LLVMAddFunction(module, "printf", printf_type) orelse return error.FailedToCreateFunctionPrintf;
+
+    llvm.LLVMSetFunctionCallConv(printf_func, 0);
+
+    try map.put("printf", .{ .func = printf_func, .func_type = printf_type, .args = null, .args_len = 0 });
+}
 pub fn createVariable(self: *Codegen, node: *ASTNode, context: ContextRef, module: ModuleRef, builder: llvm.LLVMBuilderRef, map: *std.StringHashMap(ValueRef)) !void {
     if (node.*.kind != .VariableDeclaration) {
         std.debug.print("{}\n", .{node.*.kind});
@@ -175,6 +188,11 @@ pub fn createFunction(self: *Codegen, node: *ASTNode, context: ContextRef, modul
                         const name = try self.allocator.dupe(u8, param.data.Parameter.name);
                         try llvmparamnames.append(name);
                     },
+                    .String => {
+                        try llvmparams.append(llvm.LLVMPointerType(llvm.LLVMInt8TypeInContext(context), 0));
+                        const name = try self.allocator.dupe(u8, param.data.Parameter.name);
+                        try llvmparamnames.append(name);
+                    },
                     else => {},
                 }
             },
@@ -255,6 +273,20 @@ pub fn functionCall(self: *Codegen, node: *ASTNode, context: ContextRef, module:
                 // std.debug.print("Arg ptr: {*}\n", .{@intFromPtr(num.?)});
                 try args.append(num);
             },
+            .StringLiteral => {
+                const strclean = try self.allocator.dupe(u8, arg.*.data.StringLiteral.value);
+                const str = llvm.LLVMBuildGlobalStringPtr(builder, strclean.ptr, "name");
+
+                const array_type = llvm.LLVMTypeOf(str);
+                // const element_type = llvm.LLVMGetElementType(llvm.LLVMTypeOf(str));
+                // const ty = llvm.LLVMPrintTypeToString(element_type);
+                // std.debug.print("str: {s}\nelement_type: {s}\n", .{ llvm.LLVMPrintTypeToString(array_type), ty });
+
+                const zero = llvm.LLVMConstInt(llvm.LLVMInt32TypeInContext(context), 0, 0);
+                var indices = [_]ValueRef{ zero, zero };
+
+                try args.append(llvm.LLVMBuildGEP2(builder, array_type, str, &indices[0], 2, "fmt_ptr"));
+            },
             else => unreachable,
         }
     }
@@ -303,6 +335,11 @@ pub fn functionCall(self: *Codegen, node: *ASTNode, context: ContextRef, module:
             @as(c_uint, @intCast(args.items.len)),
             @intFromPtr(cname.ptr),
         });
+        if (std.mem.eql(u8, cname, "printf")) {
+            const ff = funcmap.get("printf") orelse return error.PrintfNotDefined;
+            call = llvm.LLVMBuildCall2(builder, ff.func_type, ff.func, &args.items[0], 1, "");
+            return;
+        }
         const args_ptr = &args.items[0];
         const functionget = funcmap.get(cname) orelse return error.FunctionNull;
         call = llvm.LLVMBuildCall2(builder, functionget.func_type, function, args_ptr, @as(c_uint, @intCast(args.items.len)), cname.ptr) orelse return error.BuildCallFailed;
@@ -338,7 +375,7 @@ pub fn emitObjectFile(
         cpu,
         features,
         llvm.LLVMCodeGenLevelDefault,
-        llvm.LLVMRelocDefault,
+        llvm.LLVMRelocPIC,
         llvm.LLVMCodeModelDefault,
     );
     if (target_machine == null) {
