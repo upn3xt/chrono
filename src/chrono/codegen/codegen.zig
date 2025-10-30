@@ -203,6 +203,9 @@ pub fn createFunction(self: *Codegen, node: *ASTNode, context: ContextRef, modul
     const params_ptr = &llvmparams.items[0];
     const func_type = llvm.LLVMFunctionType(llvm.LLVMInt32TypeInContext(context), params_ptr, @intCast(llvmparams.items.len), 0) orelse return error.FnTypeNull;
 
+    const func_type_str = llvm.LLVMPrintTypeToString(func_type);
+    std.debug.print("func_type: {s}\n", .{func_type_str});
+
     const function = llvm.LLVMAddFunction(module, cname.ptr, func_type);
     llvm.LLVMSetFunctionCallConv(function, 0);
 
@@ -239,13 +242,17 @@ pub fn functionCall(self: *Codegen, node: *ASTNode, context: ContextRef, module:
 
     const function = llvm.LLVMGetNamedFunction(module, cname.ptr) orelse return error.FunctionNull;
 
-    const func_type = llvm.LLVMGetElementType(llvm.LLVMTypeOf(function));
-
-    const s1 = llvm.LLVMPrintTypeToString(func_type);
-    const s2 = llvm.LLVMPrintTypeToString(llvm.LLVMTypeOf(function));
-    std.debug.print("func_type: {s}\nval_type: {s}\n", .{ s1, s2 });
-    llvm.LLVMDisposeMessage(s1);
-    llvm.LLVMDisposeMessage(s2);
+    const func_type = llvm.LLVMGetCalledFunctionType(function);
+    const func_type_str = llvm.LLVMPrintTypeToString(func_type);
+    std.debug.print("func_type: {s}\n", .{func_type_str});
+    //
+    // const s1 = llvm.LLVMPrintTypeToString(func_type);
+    // const s2 = llvm.LLVMPrintTypeToString(llvm.LLVMTypeOf(function));
+    // const testx = llvm.LLVMPointerType(func_type, 0);
+    // std.debug.print("testx: {s}\n", .{llvm.LLVMPrintTypeToString(testx)});
+    // // std.debug.print("func_type: {s}\nval_type: {s}\n", .{ s1, s2 });
+    // llvm.LLVMDisposeMessage(s1);
+    // llvm.LLVMDisposeMessage(s2);
 
     // get function type (unwrap pointer-to-func if necessary)
     // var t = llvm.LLVMTypeOf(function);
@@ -318,23 +325,23 @@ pub fn functionCall(self: *Codegen, node: *ASTNode, context: ContextRef, module:
         //     std.debug.assert(a != null);
         // }
 
-        const result =
-            \\ builder: 0x{x}
-            \\ func_type: 0x{x}
-            \\ function: 0x{x}
-            \\ args.items.ptr: 0x{x}
-            \\ argument length: {}
-            \\ cname.ptr: 0x{x}
-            \\
-        ;
-        std.debug.print(result, .{
-            @intFromPtr(builder),
-            @intFromPtr(func_type),
-            @intFromPtr(function),
-            @intFromPtr(args.items.ptr),
-            @as(c_uint, @intCast(args.items.len)),
-            @intFromPtr(cname.ptr),
-        });
+        // const result =
+        //     \\ builder: 0x{x}
+        //     \\ func_type: 0x{x}
+        //     \\ function: 0x{x}
+        //     \\ args.items.ptr: 0x{x}
+        //     \\ argument length: {}
+        //     \\ cname.ptr: 0x{x}
+        //     \\
+        // ;
+        // std.debug.print(result, .{
+        //     @intFromPtr(builder),
+        //     @intFromPtr(func_type),
+        //     @intFromPtr(function),
+        //     @intFromPtr(args.items.ptr),
+        //     @as(c_uint, @intCast(args.items.len)),
+        //     @intFromPtr(cname.ptr),
+        // });
         if (std.mem.eql(u8, cname, "printf")) {
             const ff = funcmap.get("printf") orelse return error.PrintfNotDefined;
             call = llvm.LLVMBuildCall2(builder, ff.func_type, ff.func, &args.items[0], 1, "");

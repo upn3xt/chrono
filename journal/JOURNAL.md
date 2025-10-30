@@ -433,3 +433,8 @@ Now that 'hello world' mark has been achieved, my plan is to still figure out ho
 to understand what to do and not do. Also, external functions like printf are something that need a new way in. A new keyword or methodoly to do so. Maybe 
 like zig's way of interop or something more classy. Depends on me for real. After that I want to start to work on formatting and show calculation results.
 That's it for now.
+
+
+## Am I done resting?
+
+Nope, but since I came this far and the video about chrono is still being worked on, I'd like to fix some of the remaining issues in the code generator.
