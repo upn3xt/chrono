@@ -27,6 +27,14 @@ pub fn analyzeVariableDeclaration(node: *ASTNode, symbols: *std.StringHashMap(Ob
         .CharLiteral => {
             exp_type = .Char;
         },
+        .VariableReference => {
+            const expvar = exp.*.data.VariableReference.name;
+            const obj = symbols.get(expvar) orelse {
+                std.debug.print("Error: Undefined variable error\n", .{});
+                return error.UndefinedVariable;
+            };
+            exp_type = obj.obtype;
+        },
         else => return error.InvalidType,
     }
 

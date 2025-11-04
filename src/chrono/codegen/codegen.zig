@@ -241,10 +241,10 @@ pub fn functionCall(self: *Codegen, node: *ASTNode, context: ContextRef, module:
     const cname = try std.mem.Allocator.dupe(self.allocator, u8, nfunc.name);
 
     const function = llvm.LLVMGetNamedFunction(module, cname.ptr) orelse return error.FunctionNull;
-
+    //
     const func_type = llvm.LLVMGetCalledFunctionType(function);
-    const func_type_str = llvm.LLVMPrintTypeToString(func_type);
-    std.debug.print("func_type: {s}\n", .{func_type_str});
+    // const func_type_str = llvm.LLVMPrintTypeToString(func_type);
+    // std.debug.print("func_type: {s}\n", .{func_type_str});
     //
     // const s1 = llvm.LLVMPrintTypeToString(func_type);
     // const s2 = llvm.LLVMPrintTypeToString(llvm.LLVMTypeOf(function));

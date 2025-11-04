@@ -155,7 +155,8 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !*ASTNode {
                 return node;
             },
             .IDENTIFIER => {
-                // const name =
+                const id_name = self.current_token.lexeme;
+                exp.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = id_name, .mutable = isMutable } } };
             },
             else => try self.errorHandler(error.UnknowTokenError),
         }
@@ -201,6 +202,10 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !*ASTNode {
             .NUMBER => {
                 const value = try self.parseNumber(0);
                 exp.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
+            },
+            .IDENTIFIER => {
+                const id_name = self.current_token.lexeme;
+                exp.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = id_name, .mutable = isMutable } } };
             },
             else => try self.errorHandler(error.UnknowTokenError),
         }
