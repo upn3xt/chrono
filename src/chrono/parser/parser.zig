@@ -156,7 +156,7 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !*ASTNode {
             },
             .IDENTIFIER => {
                 const id_name = self.current_token.lexeme;
-                exp.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = id_name, .mutable = isMutable } } };
+                exp.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = id_name, .mutable = isMutable, .var_type = .Int } } };
             },
             else => try self.errorHandler(error.UnknowTokenError),
         }
@@ -205,7 +205,7 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !*ASTNode {
             },
             .IDENTIFIER => {
                 const id_name = self.current_token.lexeme;
-                exp.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = id_name, .mutable = isMutable } } };
+                exp.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = id_name, .mutable = isMutable, .var_type = .Int } } };
             },
             else => try self.errorHandler(error.UnknowTokenError),
         }
@@ -239,7 +239,7 @@ pub fn parseAssignment(self: *Parser, syms: *std.StringHashMap(Object)) !*ASTNod
     const name = self.current_token.lexeme;
     const var_node = try self.allocator.create(ASTNode);
 
-    var_node.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = name, .mutable = true } } };
+    var_node.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = name, .mutable = true, .var_type = .Int } } };
     try self.advance();
 
     if (self.current_token.token_type == .SYMBOL) {

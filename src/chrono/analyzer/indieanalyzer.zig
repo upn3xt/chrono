@@ -33,7 +33,16 @@ pub fn analyzeVariableDeclaration(node: *ASTNode, symbols: *std.StringHashMap(Ob
                 std.debug.print("Error: Undefined variable error\n", .{});
                 return error.UndefinedVariable;
             };
-            exp_type = obj.obtype;
+
+            if (obj.obtype != var_type) return error.TypeMismatch;
+
+            if (symbols.contains(name)) {
+                std.debug.print("Variable `{s}` already declared.\n", .{name});
+                return error.RedeclarationError;
+            }
+
+            try symbols.put(name, .{ .identifier = name, .mutable = mutable, .obtype = exp_type });
+            return;
         },
         else => return error.InvalidType,
     }
