@@ -12,3 +12,8 @@ Idea: Use a symbol map
 The thing is that I can't modify the node after it has been created and there's some confusion while getting the types.
 
 Update: Still no fix, but need to use the maps to get the object type
+
+## Assign variables to variables (partial fix)
+
+Got LLVM IR from the assigning a variable to a variable and it's partially working. Why partially? Had to do some tricks to make it work and still needs to be 
+a general solution for all of the types. 

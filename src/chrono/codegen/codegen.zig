@@ -110,26 +110,18 @@ pub fn createVariable(self: *Codegen, node: *ASTNode, context: ContextRef, modul
             const var_ref = expression.data.VariableReference;
 
             switch (var_ref.var_type) {
-                .Int => {},
+                .Int => {
+                    const i32_type = llvm.LLVMInt32TypeInContext(context);
+                    const value = llvm.LLVMGetNamedGlobal(module, cname.ptr);
+                    const variable = llvm.LLVMBuildAlloca(builder, i32_type, cname.ptr);
+                    if (varvar.mutable) _ = llvm.LLVMBuildStore(builder, value, variable);
+                    try map.put(cname, variable);
+                },
                 else => unreachable,
             }
         },
         else => unreachable,
     }
-    // switch (varvar.var_type) {
-    //     .Int => {
-    //         const i32_type = llvm.LLVMInt32TypeInContext(context);
-    //         const variable = llvm.LLVMBuildAlloca(builder, i32_type, cname.ptr);
-    //
-    //         const exp = varvar.expression;
-    //         const raw_value = exp.data.NumberLiteral.value;
-    //         const value = llvm.LLVMConstInt(i32_type, @intCast(raw_value), 0);
-    //         if (varvar.mutable) _ = llvm.LLVMBuildStore(builder, value, variable);
-    //         try map.put(cname, variable);
-    //     },
-    //     else => unreachable,
-    // }
-    _ = module;
 }
 
 pub fn reassignment(self: *Codegen, node: *ASTNode, context: ContextRef, module: ModuleRef, builder: BuilderRef, map: *std.StringHashMap(ValueRef)) !void {
