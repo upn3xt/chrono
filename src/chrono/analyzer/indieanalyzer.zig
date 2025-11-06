@@ -6,6 +6,9 @@ const Object = @import("../object/object.zig");
 
 const IndieAnalyzer = @This();
 
+pub fn getStuff(key: []const u8, symbols: *std.StringHashMap(Object)) ?Object {
+    return symbols.get(key);
+}
 pub fn analyzeVariableDeclaration(node: *ASTNode, symbols: *std.StringHashMap(Object)) !void {
     const name = node.*.data.VariableDeclaration.name;
 
@@ -13,9 +16,11 @@ pub fn analyzeVariableDeclaration(node: *ASTNode, symbols: *std.StringHashMap(Ob
 
     const var_type = node.*.data.VariableDeclaration.var_type;
 
+    std.debug.print("{}\n", .{var_type});
+
     const mutable = node.*.data.VariableDeclaration.mutable;
 
-    var exp_type: Type = undefined;
+    var exp_type: Type = .Void;
 
     switch (exp.kind) {
         .NumberLiteral => {
@@ -34,15 +39,16 @@ pub fn analyzeVariableDeclaration(node: *ASTNode, symbols: *std.StringHashMap(Ob
                 return error.UndefinedVariable;
             };
 
-            if (obj.obtype != var_type) return error.TypeMismatch;
-
-            if (symbols.contains(name)) {
-                std.debug.print("Variable `{s}` already declared.\n", .{name});
-                return error.RedeclarationError;
-            }
-
-            try symbols.put(name, .{ .identifier = name, .mutable = mutable, .obtype = exp_type });
-            return;
+            exp_type = obj.obtype;
+            // if (obj.obtype != var_type) return error.TypeMismatch;
+            //
+            // if (symbols.contains(name)) {
+            //     std.debug.print("Variable `{s}` already declared.\n", .{name});
+            //     return error.RedeclarationError;
+            // }
+            //
+            // try symbols.put(name, .{ .identifier = name, .mutable = mutable, .obtype = exp_type });
+            // return;
         },
         else => return error.InvalidType,
     }
@@ -51,7 +57,10 @@ pub fn analyzeVariableDeclaration(node: *ASTNode, symbols: *std.StringHashMap(Ob
         std.debug.print("Variable `{s}` already declared.\n", .{name});
         return error.RedeclarationError;
     }
-    if (var_type != exp_type) return error.TypeMismatch;
+    if (var_type != exp_type) {
+        std.debug.print("Expected type: {s} got {s}\n", .{ @tagName(var_type), @tagName(exp_type) });
+        return error.TypeMismatch;
+    }
 
     try symbols.put(name, .{ .identifier = name, .mutable = mutable, .obtype = exp_type });
 }

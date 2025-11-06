@@ -121,7 +121,7 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !*ASTNode {
 
     try self.advance();
 
-    var var_type: Type = undefined;
+    var var_type: Type = .Int;
     if (self.current_token.token_type == .OPERATOR) {
         if (self.current_token.token_type.OPERATOR != .equal) try self.errorHandler(error.ExpectedOperatorEqual);
         try self.advance();
@@ -156,6 +156,13 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !*ASTNode {
             },
             .IDENTIFIER => {
                 const id_name = self.current_token.lexeme;
+                // const contains = if (vars.contains(id_name)) true else false;
+                // std.debug.print("contains: {}\n", .{contains});
+                // const obb = IndieAnalyzer.getStuff(id_name, &vars) orelse {
+                //     std.debug.print("Variable {s} undefined\n", .{id_name});
+                //     return error.NonDeclaredVariable;
+                // };
+                // var_type = obb.obtype;
                 exp.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = id_name, .mutable = isMutable, .var_type = .Int } } };
             },
             else => try self.errorHandler(error.UnknowTokenError),

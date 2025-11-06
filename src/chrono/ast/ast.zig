@@ -9,7 +9,7 @@ pub const ASTNode = struct {
             mutable: bool,
         },
 
-        VariableReference: struct { name: []const u8, var_type: Type, mutable: bool = false },
+        VariableReference: struct { name: []const u8, var_type: Type = .Int, mutable: bool = false },
 
         NumberLiteral: struct {
             value: i64,
