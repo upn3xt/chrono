@@ -8,13 +8,15 @@ const Lexer = @This();
 /// The whole file content in a "string"
 input: []const u8,
 pos: usize,
-line: usize = 0,
+line: usize,
+line_map: std.StringHashMap(usize),
 
-pub fn init(input: []const u8) Lexer {
+pub fn init(input: []const u8, line_mapx: std.StringHashMap(usize)) Lexer {
     return Lexer{
         .input = input,
         .pos = 0,
         .line = 0,
+        .line_map = line_mapx,
     };
 }
 
@@ -42,11 +44,13 @@ pub fn advance(self: *Lexer) ?u8 {
 /// At each check uses a suport character to advance in the case the character after the current is valid and advances the position
 /// Then with the initial position and the current one, we slice the input and return a token
 /// In a loop, the start position is updated at each loop completed so it `walks` the input
-pub fn next(self: *Lexer) Token {
+pub fn next(self: *Lexer) !Token {
     while (true) {
         const current_char = self.peek() orelse return Token{ .lexeme = "", .token_type = .EOF };
+        const line_start_lex = self.pos;
 
         if (self.skipForExtra(current_char)) {
+            try self.line_map.put(self.input[line_start_lex..self.pos], self.line);
             _ = self.advance();
             continue;
         }
@@ -153,8 +157,13 @@ pub fn next(self: *Lexer) Token {
     return Token{ .lexeme = lexeme, .token_type = .UNKNOWN };
 }
 
-pub fn skipForExtra(_: *Lexer, char: u8) bool {
-    if (char == ' ' or char == '\n' or char == '\r' or char == '\t') {
+pub fn skipForExtra(self: *Lexer, char: u8) bool {
+    if (char == '\n') {
+        self.line += 1;
+        // self.line_map.put(self.line, )
+        return true;
+    }
+    if (char == ' ' or char == '\r' or char == '\t') {
         return true;
     } else return false;
 }
@@ -267,10 +276,12 @@ pub fn tokens(self: *Lexer) ![]Token {
     const allocator = std.heap.page_allocator;
     var map = std.array_list.Managed(Token).init(allocator);
     while (true) {
-        const token = self.next();
+        const token = try self.next();
         _ = try map.append(token);
         if (token.token_type == .EOF) break;
     }
+
+    std.debug.print("Total lines: {}\n", .{self.line});
 
     return map.items;
 }

@@ -30,10 +30,6 @@ pub fn build() !void {
 
     const content = contentBuf[0..contentBytes];
 
-    var lexer = Lexer.init(content);
-
-    std.debug.print("Lines: {}\n", .{lexer.line});
-
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
 
@@ -42,8 +38,23 @@ pub fn build() !void {
 
     const allocator = arena.allocator();
 
+    const line_map = std.StringHashMap(usize).init(allocator);
+    var lexer = Lexer.init(content, line_map);
+
     std.debug.print("Starting Tokenization...\n", .{});
+
     const tokens = try lexer.tokens();
+
+    var iter = lexer.line_map.keyIterator();
+
+    var i: usize = 0;
+
+    std.debug.print("capacity: {}\n", .{iter.len});
+    while (iter.next()) |value| {
+        std.debug.print("line: {}\t content: {s}\n", .{ i, value.* });
+        i += 1;
+    }
+
     std.debug.print("Tokenization done.\n", .{});
 
     std.debug.print("Starting Parsing...\n", .{});

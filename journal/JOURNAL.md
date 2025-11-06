@@ -438,3 +438,14 @@ That's it for now.
 ## Am I done resting?
 
 Nope, but since I came this far and the video about chrono is still being worked on, I'd like to fix some of the remaining issues in the code generator.
+
+
+## Issues page and better errors
+
+This time I'm up for an important update, errors are an important part of this language. Since they'll be values to be returned. And helpful error messages 
+help debug stuff way faster and with more context. Also now included a local issues "page". It's a place with documented error and fixes. What I want to 
+achieve in this update is:
+
+- Line and character information
+- AST explicit errors 
+- A generic error handler and so on

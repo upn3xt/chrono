@@ -83,6 +83,7 @@ pub fn ParseTokens(self: *Parser) ![]*ASTNode {
                         const var_node = try self.parseVariableDeclaration(isMutable);
                         try IndieAnalyzer.analyzeVariableDeclaration(var_node, &vars);
                         try node_list.append(var_node);
+
                         std.debug.print("added\n", .{});
                     },
                     .function_kw => {
