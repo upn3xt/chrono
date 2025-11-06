@@ -91,8 +91,12 @@ pub fn createVariable(self: *Codegen, node: *ASTNode, context: ContextRef, modul
 
     const varvar = node.*.data.VariableDeclaration;
     const cname = try std.mem.Allocator.dupe(self.allocator, u8, varvar.name);
-    switch (varvar.var_type) {
-        .Int => {
+
+    const expression = varvar.expression.*;
+
+    switch (expression.kind) {
+        .NumberLiteral => {
+            // do thing
             const i32_type = llvm.LLVMInt32TypeInContext(context);
             const variable = llvm.LLVMBuildAlloca(builder, i32_type, cname.ptr);
 
@@ -102,8 +106,29 @@ pub fn createVariable(self: *Codegen, node: *ASTNode, context: ContextRef, modul
             if (varvar.mutable) _ = llvm.LLVMBuildStore(builder, value, variable);
             try map.put(cname, variable);
         },
+        .VariableReference => {
+            const var_ref = expression.data.VariableReference;
+
+            switch (var_ref.var_type) {
+                .Int => {},
+                else => unreachable,
+            }
+        },
         else => unreachable,
     }
+    // switch (varvar.var_type) {
+    //     .Int => {
+    //         const i32_type = llvm.LLVMInt32TypeInContext(context);
+    //         const variable = llvm.LLVMBuildAlloca(builder, i32_type, cname.ptr);
+    //
+    //         const exp = varvar.expression;
+    //         const raw_value = exp.data.NumberLiteral.value;
+    //         const value = llvm.LLVMConstInt(i32_type, @intCast(raw_value), 0);
+    //         if (varvar.mutable) _ = llvm.LLVMBuildStore(builder, value, variable);
+    //         try map.put(cname, variable);
+    //     },
+    //     else => unreachable,
+    // }
     _ = module;
 }
 
