@@ -156,14 +156,12 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !*ASTNode {
             },
             .IDENTIFIER => {
                 const id_name = self.current_token.lexeme;
-                // const contains = if (vars.contains(id_name)) true else false;
-                // std.debug.print("contains: {}\n", .{contains});
-                // const obb = IndieAnalyzer.getStuff(id_name, &vars) orelse {
-                //     std.debug.print("Variable {s} undefined\n", .{id_name});
-                //     return error.NonDeclaredVariable;
-                // };
-                // var_type = obb.obtype;
-                exp.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = id_name, .mutable = isMutable, .var_type = .Int } } };
+                const obb = IndieAnalyzer.getStuff(id_name, &vars) orelse {
+                    std.debug.print("Variable {s} undefined\n", .{id_name});
+                    return error.NonDeclaredVariable;
+                };
+                var_type = obb.obtype;
+                exp.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = id_name, .mutable = isMutable, .var_type = obb.obtype } } };
             },
             else => try self.errorHandler(error.UnknowTokenError),
         }

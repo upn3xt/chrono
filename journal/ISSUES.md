@@ -17,3 +17,7 @@ Update: Still no fix, but need to use the maps to get the object type
 
 Got LLVM IR from the assigning a variable to a variable and it's partially working. Why partially? Had to do some tricks to make it work and still needs to be 
 a general solution for all of the types. 
+
+## Better errors
+
+There's a need for better errors.

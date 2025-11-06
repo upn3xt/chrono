@@ -16,8 +16,6 @@ pub fn analyzeVariableDeclaration(node: *ASTNode, symbols: *std.StringHashMap(Ob
 
     const var_type = node.*.data.VariableDeclaration.var_type;
 
-    std.debug.print("{}\n", .{var_type});
-
     const mutable = node.*.data.VariableDeclaration.mutable;
 
     var exp_type: Type = .Void;
