@@ -96,7 +96,6 @@ pub fn createVariable(self: *Codegen, node: *ASTNode, context: ContextRef, modul
 
     switch (expression.kind) {
         .NumberLiteral => {
-            // do thing
             const i32_type = llvm.LLVMInt32TypeInContext(context);
             const variable = llvm.LLVMBuildAlloca(builder, i32_type, cname.ptr);
 
@@ -111,10 +110,11 @@ pub fn createVariable(self: *Codegen, node: *ASTNode, context: ContextRef, modul
 
             switch (var_ref.var_type) {
                 .Int => {
+                    const ref_name = try self.allocator.dupe(u8, var_ref.name);
                     const i32_type = llvm.LLVMInt32TypeInContext(context);
                     const dest = llvm.LLVMBuildAlloca(builder, i32_type, cname.ptr);
-                    const source = llvm.LLVMBuildAlloca(builder, i32_type, var_ref.name.ptr);
-                    const load = llvm.LLVMBuildLoad2(builder, i32_type, source, var_ref.name.ptr);
+                    const source = llvm.LLVMBuildAlloca(builder, i32_type, ref_name.ptr);
+                    const load = llvm.LLVMBuildLoad2(builder, i32_type, source, ref_name.ptr);
                     _ = llvm.LLVMBuildStore(builder, load, dest);
                     _ = module;
                 },
@@ -422,7 +422,10 @@ pub fn emitObjectFile(
         llvm.LLVMObjectFile,
         &errorx,
     ) != 0) {
-        if (errorx == null) llvm.LLVMDisposeMessage(errorx);
+        if (errorx) |msg| {
+            std.debug.print("LLVM Emit Error: {s}\n", .{msg});
+            llvm.LLVMDisposeMessage(msg);
+        }
         return error.EmitObjectFileError;
     }
 

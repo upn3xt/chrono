@@ -449,3 +449,12 @@ achieve in this update is:
 - Line and character information
 - AST explicit errors 
 - A generic error handler and so on
+
+
+## Too many instructions?
+
+Today got something new working that is assigning variables to variables. The only catch is that it has too many instructions(lol). Probably will fix later. Also, emitObjects fails if 
+theres no output directory in cwd.
+
+
+As this is done. I still have to work on better errors. I need a compiler error mechanism that works.

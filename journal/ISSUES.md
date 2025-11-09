@@ -29,3 +29,8 @@ parseVariableDeclaration function in the parser.zig. It was a scope problem beca
 using a global map and the function one.
 
 Now there's a problem on emitting the IR. I assume there's a problem on the assignment anda fix for it.
+
+
+## Assigning variables to variables(fixed)
+
+Now is possible to assign variables to variables. The only catch is that somehow it got more instructions that I thought💀. Anyway victory.
