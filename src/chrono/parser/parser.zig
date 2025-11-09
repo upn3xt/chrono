@@ -80,7 +80,7 @@ pub fn ParseTokens(self: *Parser) ![]*ASTNode {
                     .const_kw, .var_kw => {
                         var isMutable = false;
                         if (key == .var_kw) isMutable = true;
-                        const var_node = try self.parseVariableDeclaration(isMutable);
+                        const var_node = try self.parseVariableDeclaration(isMutable, &vars);
                         try IndieAnalyzer.analyzeVariableDeclaration(var_node, &vars);
                         try node_list.append(var_node);
 
@@ -110,7 +110,7 @@ pub fn ParseTokens(self: *Parser) ![]*ASTNode {
     return node_list.items;
 }
 
-pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !*ASTNode {
+pub fn parseVariableDeclaration(self: *Parser, isMutable: bool, syms: *std.StringHashMap(Object)) !*ASTNode {
     const exp = try self.allocator.create(ASTNode);
     try self.advance();
 
@@ -157,7 +157,7 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool) !*ASTNode {
             },
             .IDENTIFIER => {
                 const id_name = self.current_token.lexeme;
-                const obb = IndieAnalyzer.getStuff(id_name, &vars) orelse {
+                const obb = IndieAnalyzer.getStuff(id_name, syms) orelse {
                     std.debug.print("Variable {s} undefined\n", .{id_name});
                     return error.NonDeclaredVariable;
                 };
@@ -406,7 +406,7 @@ pub fn parseFunctionDeclaration(self: *Parser) !*ASTNode {
                     .const_kw, .var_kw => {
                         var isMutable = false;
                         if (key == .var_kw) isMutable = true;
-                        const var_node = try self.parseVariableDeclaration(isMutable);
+                        const var_node = try self.parseVariableDeclaration(isMutable, &varsbody);
                         try IndieAnalyzer.analyzeVariableDeclaration(var_node, &varsbody);
                         try body.append(var_node);
                     },

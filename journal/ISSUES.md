@@ -21,3 +21,11 @@ a general solution for all of the types.
 ## Better errors
 
 There's a need for better errors.
+
+## Assigning variables to variables(mostly fixed)
+
+Now assigning variables to variables is possible. The fix was adding a symbol map to the 
+parseVariableDeclaration function in the parser.zig. It was a scope problem because I was 
+using a global map and the function one.
+
+Now there's a problem on emitting the IR. I assume there's a problem on the assignment anda fix for it.

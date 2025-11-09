@@ -112,10 +112,11 @@ pub fn createVariable(self: *Codegen, node: *ASTNode, context: ContextRef, modul
             switch (var_ref.var_type) {
                 .Int => {
                     const i32_type = llvm.LLVMInt32TypeInContext(context);
-                    const value = llvm.LLVMGetNamedGlobal(module, cname.ptr);
-                    const variable = llvm.LLVMBuildAlloca(builder, i32_type, cname.ptr);
-                    if (varvar.mutable) _ = llvm.LLVMBuildStore(builder, value, variable);
-                    try map.put(cname, variable);
+                    const dest = llvm.LLVMBuildAlloca(builder, i32_type, cname.ptr);
+                    const source = llvm.LLVMBuildAlloca(builder, i32_type, var_ref.name.ptr);
+                    const load = llvm.LLVMBuildLoad2(builder, i32_type, source, var_ref.name.ptr);
+                    _ = llvm.LLVMBuildStore(builder, load, dest);
+                    _ = module;
                 },
                 else => unreachable,
             }
@@ -421,7 +422,7 @@ pub fn emitObjectFile(
         llvm.LLVMObjectFile,
         &errorx,
     ) != 0) {
-        defer if (errorx == null) llvm.LLVMDisposeMessage(errorx);
+        if (errorx == null) llvm.LLVMDisposeMessage(errorx);
         return error.EmitObjectFileError;
     }
 
