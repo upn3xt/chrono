@@ -34,3 +34,13 @@ Now there's a problem on emitting the IR. I assume there's a problem on the assi
 ## Assigning variables to variables(fixed)
 
 Now is possible to assign variables to variables. The only catch is that somehow it got more instructions that I thought💀. Anyway victory.
+
+
+## Better errors
+
+To address this issue, this will have to happen(mostly) at the parser level. Things like type-checking and bounds check are done within the analyzer.
+
+
+## Better erros, now we have lines 
+
+The title is right. Now we have line count. Making the newline a token, a parse it and there we go. This'll help address parsing and type-checking errors.

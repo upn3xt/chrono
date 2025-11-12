@@ -152,17 +152,28 @@ pub fn next(self: *Lexer) !Token {
         return Token{ .lexeme = lexeme, .token_type = .CHAR };
     }
 
+    if (current_char == '\n') {
+        _ = self.advance();
+        // while (true) {
+        //     const char2 = self.peek();
+        //     if (char2 == null or char2.? == '\n') break;
+        //     _ = self.advance();
+        // }
+        const lexeme = self.input[start_pos..self.pos];
+        return Token{ .lexeme = lexeme, .token_type = .NEWLINE };
+    }
+
     _ = self.advance();
     const lexeme = self.input[start_pos..self.pos];
     return Token{ .lexeme = lexeme, .token_type = .UNKNOWN };
 }
 
-pub fn skipForExtra(self: *Lexer, char: u8) bool {
-    if (char == '\n') {
-        self.line += 1;
-        // self.line_map.put(self.line, )
-        return true;
-    }
+pub fn skipForExtra(_: *Lexer, char: u8) bool {
+    // if (char == '\n') {
+    //     self.line += 1;
+    //     // self.line_map.put(self.line, )
+    //     return true;
+    // }
     if (char == ' ' or char == '\r' or char == '\t') {
         return true;
     } else return false;
@@ -280,8 +291,6 @@ pub fn tokens(self: *Lexer) ![]Token {
         _ = try map.append(token);
         if (token.token_type == .EOF) break;
     }
-
-    std.debug.print("Total lines: {}\n", .{self.line});
 
     return map.items;
 }

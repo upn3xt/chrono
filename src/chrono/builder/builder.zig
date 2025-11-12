@@ -45,15 +45,9 @@ pub fn build() !void {
 
     const tokens = try lexer.tokens();
 
-    var iter = lexer.line_map.keyIterator();
-
-    var i: usize = 0;
-
-    std.debug.print("capacity: {}\n", .{iter.len});
-    while (iter.next()) |value| {
-        std.debug.print("line: {}\t content: {s}\n", .{ i, value.* });
-        i += 1;
-    }
+    // for (tokens) |value| {
+    //     std.debug.print("[TOKEN]: {s} -> [TYPE]: {}\n", .{ value.lexeme, value.token_type });
+    // }
 
     std.debug.print("Tokenization done.\n", .{});
 
