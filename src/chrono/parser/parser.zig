@@ -39,7 +39,7 @@ pub fn init(allocator: std.mem.Allocator, tokens: []Token) Parser {
         .tokens = tokens,
         .index = 0,
         .current_token = tokens[0],
-        .line = 0,
+        .line = 1,
     };
 }
 
@@ -134,12 +134,14 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool, syms: *std.Strin
 
     if (self.current_token.token_type != .IDENTIFIER) {
         try lex_line.append(self.current_token.lexeme);
-        const plhd = lex_line.items;
-        const error_slice = plhd[self.index - 1 .. lex_line.items.len];
-        std.debug.print("Check this line:\n", .{});
-        for (error_slice) |value| {
-            std.debug.print("{s} ", .{value});
-        }
+
+        try self.errorHandler2("Failed to parse expression. Expected IDENTIFIER got", self.current_token.token_type);
+        // const plhd = lex_line.items;
+        // const error_slice = plhd[self.index - 1 .. lex_line.items.len];
+        // std.debug.print("Check this line:\n", .{});
+        // for (error_slice) |value| {
+        //     std.debug.print("{s} ", .{value});
+        // }
         // std.debug.print("Got token: {s}\t type: {}", .{ self.current_token.lexeme, self.current_token.token_type });
         try self.errorHandler(error.ExpectedIdentifierError);
     }
@@ -570,4 +572,9 @@ pub fn h_getType(_: *Parser, elem: []const u8) ?Type {
     if (std.mem.eql(u8, "string", elem)) return Type.String;
     if (std.mem.eql(u8, "void", elem)) return Type.Void;
     return null;
+}
+
+pub fn errorHandler2(self: *Parser, str: []const u8, args: anytype) !void {
+    std.debug.print("filename {}:{}: {s} {any}\n", .{ self.line, self.index, str, args });
+    return error.ParsingError;
 }
