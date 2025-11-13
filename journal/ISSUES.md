@@ -44,3 +44,14 @@ To address this issue, this will have to happen(mostly) at the parser level. Thi
 ## Better erros, now we have lines 
 
 The title is right. Now we have line count. Making the newline a token, a parse it and there we go. This'll help address parsing and type-checking errors.
+
+
+## Better errors, they're nicer now
+
+Errors just got a lot more specific and nicer. The line and index thing now are a thing two along with informative error messages.
+
+Next, I want a even better error handler to handle all things and have even more information. But for now they're good as they are.
+
+## Hanle all native cases (next step)
+
+To handle all cases for types. No more integer priority and this will help move forward way faster.
