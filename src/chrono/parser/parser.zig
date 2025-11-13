@@ -47,6 +47,7 @@ pub fn advance(self: *Parser) !void {
     if (self.index + 1 >= self.tokens.len) try self.errorHandler(error.IndexOutOfBoundsError);
 
     if (self.current_token.token_type == .NEWLINE) self.line += 1;
+    try lex_line.append(self.current_token.lexeme);
 
     self.index += 1;
     self.current_token = self.tokens[self.index];
@@ -115,6 +116,9 @@ pub fn ParseTokens(self: *Parser) ![]*ASTNode {
             .NEWLINE => try self.advance(),
             else => try self.errorHandler(error.UnexpectedTokenError),
         }
+    }
+    for (lex_line.items) |value| {
+        std.debug.print("{s} ", .{value});
     }
     std.debug.print("Number of lines: {}\n", .{self.line});
 
