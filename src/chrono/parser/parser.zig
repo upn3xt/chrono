@@ -31,7 +31,7 @@ allocator: std.mem.Allocator,
 tokens: []Token,
 index: usize = 0,
 current_token: Token,
-line: usize = 0,
+line: usize,
 
 pub fn init(allocator: std.mem.Allocator, tokens: []Token) Parser {
     return Parser{
@@ -44,7 +44,7 @@ pub fn init(allocator: std.mem.Allocator, tokens: []Token) Parser {
 }
 
 pub fn advance(self: *Parser) !void {
-    if (self.index + 1 >= self.tokens.len) try self.errorHandler(error.IndexOutOfBoundsError);
+    if (self.index + 1 >= self.tokens.len) try self.errorHandler2("Index out of bounds error.",.{});
 
     if (self.current_token.token_type == .NEWLINE) self.line += 1;
     try lex_line.append(self.current_token.lexeme);
@@ -82,7 +82,7 @@ pub fn errorHandler(self: *Parser, err: ParserError) ParserError!void {
 pub fn ParseTokens(self: *Parser) ![]*ASTNode {
     var node_list = std.array_list.Managed(*ASTNode).init(self.allocator);
     while (true) {
-        if (self.index >= self.tokens.len) try self.errorHandler(error.IndexOutOfBoundsError);
+        if (self.index >= self.tokens.len) try self.errorHandler2("*",.{});IndexOutOfBoundsError);
 
         switch (self.current_token.token_type) {
             .KEYWORD => |key| {
@@ -111,16 +111,16 @@ pub fn ParseTokens(self: *Parser) ![]*ASTNode {
                 try node_list.append(id_node);
             },
             .COMMENT => try self.advance(),
-            .UNKNOWN => try self.errorHandler(error.UnknowTokenError),
+            .UNKNOWN => try self.errorHandler2("*",.{});UnknowTokenError),
             .EOF => break,
             .NEWLINE => try self.advance(),
-            else => try self.errorHandler(error.UnexpectedTokenError),
+            else => try self.errorHandler2("Unexpected Token Error", .{}),
         }
     }
-    for (lex_line.items) |value| {
-        std.debug.print("{s} ", .{value});
-    }
-    std.debug.print("Number of lines: {}\n", .{self.line});
+    // for (lex_line.items) |value| {
+    //     std.debug.print("{s} ", .{value});
+    // }
+    // std.debug.print("Number of lines: {}\n", .{self.line});
 
     // for (lex_line.items) |value| {
     //     std.debug.print("{s}\n", .{value});
@@ -143,7 +143,7 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool, syms: *std.Strin
         //     std.debug.print("{s} ", .{value});
         // }
         // std.debug.print("Got token: {s}\t type: {}", .{ self.current_token.lexeme, self.current_token.token_type });
-        try self.errorHandler(error.ExpectedIdentifierError);
+        // try self.errorHandler2("*",.{});ExpectedIdentifierError);
     }
     const name = self.current_token.lexeme;
 
@@ -151,7 +151,8 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool, syms: *std.Strin
 
     var var_type: Type = .Int;
     if (self.current_token.token_type == .OPERATOR) {
-        if (self.current_token.token_type.OPERATOR != .equal) try self.errorHandler(error.ExpectedOperatorEqual);
+        if (self.current_token.token_type.OPERATOR != .equal)
+            try self.errorHandler2("Failed to parse expression. Expected OPERATOR got", self.current_token.token_type);
 
         try self.advance();
         switch (self.current_token.token_type) {
@@ -170,7 +171,7 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool, syms: *std.Strin
             .NUMBER => {
                 const value = try self.parseNumber(0);
 
-                std.debug.print("Result: {}\n", .{value});
+                // std.debug.print("Result: {}\n", .{value});
                 var_type = .Int;
                 exp.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
 
@@ -196,7 +197,7 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool, syms: *std.Strin
                 var_type = obb.obtype;
                 exp.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = id_name, .mutable = isMutable, .var_type = obb.obtype } } };
             },
-            else => try self.errorHandler(error.UnknowTokenError),
+            else => try self.errorHandler2("Unexpected Token Error", .{}),
         }
 
         try self.advance();
@@ -216,15 +217,15 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool, syms: *std.Strin
         return node;
     }
     if (self.current_token.token_type == .PUNCTUATION) {
-        if (self.current_token.token_type.PUNCTUATION != .colon) try self.errorHandler(error.ExpectedPuntuactionColon);
+        if (self.current_token.token_type.PUNCTUATION != .colon) try self.errorHandler2("*",.{});ExpectedPuntuactionColon);
         try self.advance();
 
-        if (self.current_token.token_type != .IDENTIFIER) try self.errorHandler(error.ExpectedIdentifierError);
+        if (self.current_token.token_type != .IDENTIFIER) try self.errorHandler2("*",.{});ExpectedIdentifierError);
 
         try self.advance();
 
-        if (self.current_token.token_type != .OPERATOR) try self.errorHandler(error.ExpecterOperator);
-        if (self.current_token.token_type.OPERATOR != .equal) try self.errorHandler(error.ExpectedOperatorEqual);
+        if (self.current_token.token_type != .OPERATOR) try self.errorHandler2("*",.{});ExpecterOperator);
+        if (self.current_token.token_type.OPERATOR != .equal) try self.errorHandler2("*",.{});ExpectedOperatorEqual);
 
         try self.advance();
 
@@ -245,7 +246,7 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool, syms: *std.Strin
                 const id_name = self.current_token.lexeme;
                 exp.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = id_name, .mutable = isMutable, .var_type = .Int } } };
             },
-            else => try self.errorHandler(error.UnknowTokenError),
+            else => try self.errorHandler2("*",.{});UnknowTokenError),
         }
 
         try self.advance();
@@ -264,7 +265,7 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool, syms: *std.Strin
 
         return node;
     } else {
-        try self.errorHandler(error.UnexpectedTokenError);
+        try self.errorHandler2("*",.{});UnexpectedTokenError);
     }
     return error.OperationVarDecFailed;
 }
@@ -273,7 +274,7 @@ pub fn parseAssignment(self: *Parser, syms: *std.StringHashMap(Object)) !*ASTNod
     var asgtype: Type = undefined;
     const exp = try self.allocator.create(ASTNode);
 
-    if (self.current_token.token_type != .IDENTIFIER) try self.errorHandler(error.ExpectedIdentifierError);
+    if (self.current_token.token_type != .IDENTIFIER) try self.errorHandler2("*",.{});ExpectedIdentifierError);
     const name = self.current_token.lexeme;
     const var_node = try self.allocator.create(ASTNode);
 
@@ -319,7 +320,7 @@ pub fn parseAssignment(self: *Parser, syms: *std.StringHashMap(Object)) !*ASTNod
         }
     }
     if (self.current_token.token_type == .OPERATOR) {
-        if (self.current_token.token_type.OPERATOR != .equal) try self.errorHandler(error.ExpectedOperatorEqual);
+        if (self.current_token.token_type.OPERATOR != .equal) try self.errorHandler2("*",.{});ExpectedOperatorEqual);
 
         try self.advance();
 
@@ -348,7 +349,7 @@ pub fn parseAssignment(self: *Parser, syms: *std.StringHashMap(Object)) !*ASTNod
 
                 return node;
             },
-            else => try self.errorHandler(error.UnexpectedTokenError),
+            else => try self.errorHandler2("*",.{});UnexpectedTokenError),
         }
 
         try self.advance();
@@ -372,7 +373,7 @@ pub fn parseFunctionDeclaration(self: *Parser) !*ASTNode {
     const node = try self.allocator.create(ASTNode);
     try self.advance();
 
-    if (self.current_token.token_type != .IDENTIFIER) try self.errorHandler(error.ExpectedIdentifierError);
+    if (self.current_token.token_type != .IDENTIFIER) try self.errorHandler2("*",.{});ExpectedIdentifierError);
     const fn_name = self.current_token.lexeme;
     std.debug.print("function {s}\n", .{fn_name});
 
@@ -456,14 +457,14 @@ pub fn parseFunctionDeclaration(self: *Parser) !*ASTNode {
                 try body.append(id_node);
             },
             .SYMBOL => |s| {
-                if (s != .r_curlyBracket) try self.errorHandler(error.UnexpectedTokenError);
+                if (s != .r_curlyBracket) try self.errorHandler2("*",.{});
                 break;
             },
             .COMMENT => try self.advance(),
-            .UNKNOWN => try self.errorHandler(error.UnknowTokenError),
+            .UNKNOWN => try self.errorHandler2("*",.{}),
             .EOF => return error.ReachedEOFEarly,
             .NEWLINE => try self.advance(),
-            else => try self.errorHandler(error.UnexpectedTokenError),
+            else => try self.errorHandler2("*",.{}),
         }
     }
     node.* = .{ .kind = .FunctionDeclaration, .data = .{ .FunctionDeclaration = .{
@@ -530,8 +531,8 @@ pub fn parseNumber(self: *Parser, min_bp: u8) !i64 {
     return left;
 }
 pub fn semiAndGo(self: *Parser) !void {
-    if (self.current_token.token_type != .PUNCTUATION) try self.errorHandler(error.ExpectedPuntuactionError);
-    if (self.current_token.token_type.PUNCTUATION != .semi_colon) try self.errorHandler(error.ExpectedPuntuactionSemiColonError);
+    if (self.current_token.token_type != .PUNCTUATION) try self.errorHandler2("*",.{});
+    if (self.current_token.token_type.PUNCTUATION != .semi_colon) try self.errorHandler2("*",.{});
     try self.advance();
 }
 
@@ -555,7 +556,7 @@ pub fn parseReturn(self: *Parser) !*ASTNode {
             const value = try self.parseNumber(0);
             exp.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = value } } };
         },
-        else => try self.errorHandler(error.UnexpectedTokenError),
+        else => try self.errorHandler2("*",.{}),
     }
 
     try self.semiAndGo();
