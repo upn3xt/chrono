@@ -6,25 +6,11 @@ const Object = @import("../../chrono/object/object.zig");
 const Type = @import("../types/types.zig").Type;
 const Token = @import("../token/token.zig");
 
-// var major_allocator = std.heap.page_allocator;
-
 var lex_line = std.array_list.Managed([]const u8).init(std.heap.page_allocator);
 
 var vars = std.StringHashMap(Object).init(std.heap.page_allocator);
 var funcs = std.StringHashMap(Object).init(std.heap.page_allocator);
 
-// const ExpectedTokenError = error{
-//     ExpectedIdentifierError,
-//     ExpectedPuntuactionError,
-//     ExpectedPuntuactionSemiColonError,
-//     ExpectedNumberLiteralError,
-//     ExpecterOperator,
-//     ExpectedOperatorEqual,
-//     ExpectedPuntuactionColon,
-// };
-// const GeneralError = error{ IndexOutOfBoundsError, UnknowTokenError, UnexpectedTokenError };
-// const ParserError = GeneralError || ExpectedTokenError;
-//
 const Parser = @This();
 
 allocator: std.mem.Allocator,
@@ -62,27 +48,6 @@ pub fn previous(self: *Parser) !void {
     self.index -= 1;
     self.current_token = self.tokens[self.index];
 }
-
-// pub fn errorHandler(self: *Parser, err: ParserError) ParserError!void {
-//     switch (err) {
-//         error.IndexOutOfBoundsError => {
-//             std.debug.print("Failed to advance any further. Reached EOF early at position {}.\n Last token: {s}\n", .{ self.index, self.current_token.lexeme });
-//             return err;
-//         },
-//         error.UnknowTokenError => {
-//             std.debug.print("Unknow token found at position {}. Token: {s} Type: {}\n", .{ self.index, self.current_token.lexeme, self.current_token.token_type });
-//             return err;
-//         },
-//         error.UnexpectedTokenError => {
-//             std.debug.print("Unexpected token at position {}. Token: {s}\n", .{ self.index, self.current_token.lexeme });
-//             return err;
-//         },
-//         else => {
-//             std.debug.print("Unknow error.\n Check index {}.\nLast Token: {s}\n", .{ self.index, self.current_token.lexeme });
-//             return err;
-//         },
-//     }
-// }
 
 pub fn ParseTokens(self: *Parser) ![]*ASTNode {
     var node_list = std.array_list.Managed(*ASTNode).init(self.allocator);
@@ -122,14 +87,7 @@ pub fn ParseTokens(self: *Parser) ![]*ASTNode {
             else => try self.errorHandler2("Unexpected Token Error", .{}),
         }
     }
-    // for (lex_line.items) |value| {
-    //     std.debug.print("{s} ", .{value});
-    // }
-    // std.debug.print("Number of lines: {}\n", .{self.line});
 
-    // for (lex_line.items) |value| {
-    //     std.debug.print("{s}\n", .{value});
-    // }
     return node_list.items;
 }
 
@@ -139,16 +97,7 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool, syms: *std.Strin
 
     if (self.current_token.token_type != .IDENTIFIER) {
         try lex_line.append(self.current_token.lexeme);
-
         try self.errorHandler2("Failed to parse expression. Expected IDENTIFIER got", self.current_token.token_type);
-        // const plhd = lex_line.items;
-        // const error_slice = plhd[self.index - 1 .. lex_line.items.len];
-        // std.debug.print("Check this line:\n", .{});
-        // for (error_slice) |value| {
-        //     std.debug.print("{s} ", .{value});
-        // }
-        // std.debug.print("Got token: {s}\t type: {}", .{ self.current_token.lexeme, self.current_token.token_type });
-        // try self.errorHandler2("*",.{});ExpectedIdentifierError);
     }
     const name = self.current_token.lexeme;
 
@@ -188,7 +137,7 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool, syms: *std.Strin
                     .var_type = .Int,
                 } } };
 
-                std.debug.print("{s}! Mutable: {}\n", .{ name, isMutable });
+                // std.debug.print("{s}! Mutable: {}\n", .{ name, isMutable });
 
                 return node;
             },
@@ -217,7 +166,7 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool, syms: *std.Strin
             .var_type = var_type,
         } } };
 
-        std.debug.print("{s}! Mutable: {}\n", .{ name, isMutable });
+        // std.debug.print("{s}! Mutable: {}\n", .{ name, isMutable });
 
         return node;
     }
@@ -256,13 +205,19 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool, syms: *std.Strin
                     .var_type = .Int,
                 } } };
 
-                std.debug.print("{s}! Mutable: {}\n", .{ name, isMutable });
+                // std.debug.print("{s}! Mutable: {}\n", .{ name, isMutable });
 
                 return node;
             },
             .IDENTIFIER => {
                 const id_name = self.current_token.lexeme;
-                exp.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = id_name, .mutable = isMutable, .var_type = .Int } } };
+
+                const obb = IndieAnalyzer.getStuff(id_name, syms) orelse {
+                    std.debug.print("Variable {s} undefined\n", .{id_name});
+                    return error.NonDeclaredVariable;
+                };
+                var_type = obb.obtype;
+                exp.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = id_name, .mutable = isMutable, .var_type = obb.obtype } } };
             },
             else => try self.errorHandler2("Unexpected Token Error.", .{}),
         }
@@ -279,7 +234,7 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool, syms: *std.Strin
             .var_type = .Int,
         } } };
 
-        std.debug.print("{s}! Mutable: {}\n", .{ name, isMutable });
+        // std.debug.print("{s}! Mutable: {}\n", .{ name, isMutable });
 
         return node;
     } else {
@@ -363,9 +318,19 @@ pub fn parseAssignment(self: *Parser, syms: *std.StringHashMap(Object)) !*ASTNod
                 const node = try self.allocator.create(ASTNode);
                 node.* = .{ .kind = .Assignment, .data = .{ .Assignment = .{ .variable = var_node, .expression = exp, .asg_type = asgtype } } };
 
-                std.debug.print("{s} mutated!\n", .{name});
+                // std.debug.print("{s} mutated!\n", .{name});
 
                 return node;
+            },
+            .IDENTIFIER => {
+                const id_name = self.current_token.lexeme;
+
+                const obb = IndieAnalyzer.getStuff(id_name, syms) orelse {
+                    std.debug.print("Variable {s} undefined\n", .{id_name});
+                    return error.NonDeclaredVariable;
+                };
+
+                exp.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = id_name, .var_type = obb.obtype } } };
             },
             else => try self.errorHandler2("Unexpected Token Error ", .{}),
         }
@@ -379,7 +344,7 @@ pub fn parseAssignment(self: *Parser, syms: *std.StringHashMap(Object)) !*ASTNod
         const node = try self.allocator.create(ASTNode);
         node.* = .{ .kind = .Assignment, .data = .{ .Assignment = .{ .variable = var_node, .expression = exp, .asg_type = asgtype } } };
 
-        std.debug.print("{s} mutated!\n", .{name});
+        // std.debug.print("{s} mutated!\n", .{name});
 
         return node;
     }
@@ -393,7 +358,7 @@ pub fn parseFunctionDeclaration(self: *Parser) !*ASTNode {
 
     if (self.current_token.token_type != .IDENTIFIER) try self.errorHandler2("Expected IDENTIFIER got", .{self.current_token.token_type});
     const fn_name = self.current_token.lexeme;
-    std.debug.print("function {s}\n", .{fn_name});
+    // std.debug.print("function {s}\n", .{fn_name});
 
     try self.advance();
 
@@ -424,7 +389,7 @@ pub fn parseFunctionDeclaration(self: *Parser) !*ASTNode {
         parameter.* = .{ .kind = .Parameter, .data = .{ .Parameter = .{ .name = name, .par_type = par_type } } };
 
         try parameters.append(parameter);
-        std.debug.print("param {s}\n", .{name});
+        // std.debug.print("param {s}\n", .{name});
 
         try self.advance();
 

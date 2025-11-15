@@ -221,8 +221,8 @@ pub fn createFunction(self: *Codegen, node: *ASTNode, context: ContextRef, modul
     const params_ptr = &llvmparams.items[0];
     const func_type = llvm.LLVMFunctionType(llvm.LLVMInt32TypeInContext(context), params_ptr, @intCast(llvmparams.items.len), 0) orelse return error.FnTypeNull;
 
-    const func_type_str = llvm.LLVMPrintTypeToString(func_type);
-    std.debug.print("func_type: {s}\n", .{func_type_str});
+    // const func_type_str = llvm.LLVMPrintTypeToString(func_type);
+    // std.debug.print("func_type: {s}\n", .{func_type_str});
 
     const function = llvm.LLVMAddFunction(module, cname.ptr, func_type);
     llvm.LLVMSetFunctionCallConv(function, 0);
