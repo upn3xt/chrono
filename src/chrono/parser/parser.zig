@@ -5,6 +5,7 @@ const ASTNode = @import("../../chrono/ast/ast.zig").ASTNode;
 const Object = @import("../../chrono/object/object.zig");
 const Type = @import("../types/types.zig").Type;
 const Token = @import("../token/token.zig");
+const Lexer = @import("../lexer/lexer.zig");
 
 var lex_line = std.array_list.Managed([]const u8).init(std.heap.page_allocator);
 
@@ -153,6 +154,18 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool, syms: *std.Strin
             },
             .BOOL => {
                 // work here
+            },
+            .SYMBOL => |sym| {
+                switch (sym) {
+                    .inter => {
+                        try self.advance();
+
+                        if (self.current_token.token_type != .STRING) try self.errorHandler2("Expected string but got: ", self.current_token.token_type);
+
+                        const str = self.current_token.lexeme;
+                    },
+                    else => try self.errorHandler2("Unexpected symbol. Expected $ got: ", self.current_token.token_type),
+                }
             },
             else => try self.errorHandler2("Unexpected Token Error", .{}),
         }
@@ -566,4 +579,49 @@ pub fn h_getType(_: *Parser, elem: []const u8) ?Type {
     if (std.mem.eql(u8, "string", elem)) return Type.String;
     if (std.mem.eql(u8, "void", elem)) return Type.Void;
     return null;
+}
+
+pub fn parseInterpolatedStr(self: *Parser, str: []const u8) ![]*ASTNode {
+    // tokenize
+    // parse
+    // return array of expressions
+
+    const linemap = std.StringHashMap(usize).init(self.allocator);
+    const lexer = Lexer.init(str, linemap);
+
+    const tokens = try lexer.tokens();
+
+    var i: usize = 0;
+    while (true) {
+        if (i >= tokens.len) try self.errorHandler2("Index out of bounds while parsing string.", .{});
+        var token = tokens[i];
+        switch (token.token_type) {
+            .SYMBOL => |sym| {
+                switch (sym) {
+                    .l_curlyBracket => {
+                        i += 1;
+                        token = tokens[i];
+                        switch (token.token_type) {
+                            .STRING => {},
+                            .NUMBER => {},
+                            .IDENTIFIER => {},
+                            .CHAR => {},
+                            .BOOL => {},
+                            else => try self.errorHandler2("Unexpected token while parsing string: ", self.current_token.token_type),
+                        }
+
+                        i += 1;
+                        token = tokens[i];
+                        if (token.token_type != .SYMBOL) try self.errorHandler2("Unexpected token while parsing string: ", self.current_token.token_type);
+                        if (token.token_type.SYMBOL != .r_curlyBracket) try self.errorHandler2("Expected closing bracket while parsing string: ", self.current_token.token_type);
+
+                        // i+=1;
+                        // token = tokens[i];
+                    },
+                    else => {},
+                }
+            },
+            else => {},
+        }
+    }
 }

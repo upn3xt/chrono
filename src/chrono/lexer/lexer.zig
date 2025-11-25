@@ -212,6 +212,7 @@ pub fn whichSyboml(_: *Lexer, char: u8) ?Token.TokenType {
         '}' => return Token.TokenType{ .SYMBOL = .r_curlyBracket },
         '[' => return Token.TokenType{ .SYMBOL = .l_bracket },
         ']' => return Token.TokenType{ .SYMBOL = .r_bracket },
+        '$' => return Token.TokenType{ .SYMBOL = .inter },
         else => return null,
     }
 }
@@ -233,7 +234,6 @@ pub fn isSymbol(_: *Lexer, char: u8) bool {
         char == ']' or
         char == '(' or
         char == ')' or
-        char == '$' or
         char == '&' or
         char == '_')
     {
