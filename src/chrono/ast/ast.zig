@@ -50,6 +50,7 @@ pub const ASTNode = struct {
             value: *ASTNode,
         },
         Undefined: struct {},
+        InterpolatedString: struct { str_ast: []*ASTNode },
     },
 };
 
@@ -66,4 +67,5 @@ pub const NodeKind = enum {
     Parameter,
     Return,
     Undefined,
+    InterpolatedString,
 };

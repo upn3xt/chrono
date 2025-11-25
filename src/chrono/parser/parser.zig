@@ -163,6 +163,9 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool, syms: *std.Strin
                         if (self.current_token.token_type != .STRING) try self.errorHandler2("Expected string but got: ", self.current_token.token_type);
 
                         const str = self.current_token.lexeme;
+                        const str_ast = self.parseInterpolatedStr(str);
+
+                        exp.* = .{ .kind = .InterpolatedString, .data = .{ .InterpolatedString = str_ast } };
                     },
                     else => try self.errorHandler2("Unexpected symbol. Expected $ got: ", self.current_token.token_type),
                 }

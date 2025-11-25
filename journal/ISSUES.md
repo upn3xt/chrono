@@ -61,3 +61,9 @@ To handle all cases for types. No more integer priority and this will help move 
 
 One of the parts of being able to work with all types is to print all kinds of result. Therefore, it'd be nice to implement string formatting early in the language using the C# like 
 technique of formatting. Either that or C's native way of formatting.
+
+
+## String interpolation(on the way)
+
+This is related and way better title for the last 2 points. I've been making changes and updates to now use the `$ AKA inter` to activate a new ast node called InterpolatedString.
+Will work on it and make it a thing.
