@@ -55,3 +55,9 @@ Next, I want a even better error handler to handle all things and have even more
 ## Hanle all native cases (next step)
 
 To handle all cases for types. No more integer priority and this will help move forward way faster.
+
+
+## Printing and formatting all native types
+
+One of the parts of being able to work with all types is to print all kinds of result. Therefore, it'd be nice to implement string formatting early in the language using the C# like 
+technique of formatting. Either that or C's native way of formatting.

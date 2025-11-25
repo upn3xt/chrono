@@ -151,6 +151,9 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool, syms: *std.Strin
                 var_type = obb.obtype;
                 exp.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = id_name, .mutable = isMutable, .var_type = obb.obtype } } };
             },
+            .BOOL => {
+                // work here
+            },
             else => try self.errorHandler2("Unexpected Token Error", .{}),
         }
 
@@ -271,6 +274,13 @@ pub fn parseAssignment(self: *Parser, syms: *std.StringHashMap(Object)) !*ASTNod
                         const num = try std.fmt.parseInt(i32, self.current_token.lexeme, 10);
                         const numnode = try self.allocator.create(ASTNode);
                         numnode.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = num } } };
+                        try args.append(numnode);
+                        try self.advance();
+                    },
+                    .CHAR => {
+                        const char = self.current_token.lexeme[0];
+                        const numnode = try self.allocator.create(ASTNode);
+                        numnode.* = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = char } } };
                         try args.append(numnode);
                         try self.advance();
                     },

@@ -1,0 +1,6 @@
+pub fn main() void {
+
+    const x = 'A';
+    printf("HUH HUH HUH HUH HUH HUHHH");
+    // printf('X');
+}

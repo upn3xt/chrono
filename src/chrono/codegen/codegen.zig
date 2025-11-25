@@ -121,6 +121,16 @@ pub fn createVariable(self: *Codegen, node: *ASTNode, context: ContextRef, modul
                 else => unreachable,
             }
         },
+        .CharLiteral => {
+            const char_type = llvm.LLVMInt8TypeInContext(context);
+            const variable = llvm.LLVMBuildAlloca(builder, char_type, cname.ptr);
+
+            const exp = varvar.expression;
+            const raw_value = exp.data.CharLiteral.value;
+            const value = llvm.LLVMConstInt(char_type, @intCast(raw_value), 0);
+            if (varvar.mutable) _ = llvm.LLVMBuildStore(builder, value, variable);
+            try map.put(cname, variable);
+        },
         else => unreachable,
     }
 }
@@ -208,6 +218,11 @@ pub fn createFunction(self: *Codegen, node: *ASTNode, context: ContextRef, modul
                     },
                     .String => {
                         try llvmparams.append(llvm.LLVMPointerType(llvm.LLVMInt8TypeInContext(context), 0));
+                        const name = try self.allocator.dupe(u8, param.data.Parameter.name);
+                        try llvmparamnames.append(name);
+                    },
+                    .Char => {
+                        try llvmparams.append(llvm.LLVMInt8TypeInContext(context));
                         const name = try self.allocator.dupe(u8, param.data.Parameter.name);
                         try llvmparamnames.append(name);
                     },
@@ -311,6 +326,15 @@ pub fn functionCall(self: *Codegen, node: *ASTNode, context: ContextRef, module:
                 var indices = [_]ValueRef{ zero, zero };
 
                 try args.append(llvm.LLVMBuildGEP2(builder, array_type, str, &indices[0], 2, "fmt_ptr"));
+            },
+            .CharLiteral => {
+                const char = llvm.LLVMConstInt(llvm.LLVMInt8TypeInContext(context), @intCast(arg.*.data.CharLiteral.value), 0);
+
+                const ty = llvm.LLVMTypeOf(char);
+
+                var indices = [_]ValueRef{llvm.LLVMConstInt(llvm.LLVMInt8TypeInContext(context), @intCast(arg.*.data.CharLiteral.value), 0)};
+
+                try args.append(llvm.LLVMBuildGEP2(builder, ty, char, &indices[0], 1, "sm"));
             },
             else => unreachable,
         }

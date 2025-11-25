@@ -1,0 +1,3 @@
+const name = "Next"
+
+const result = $"My name is {name}";
