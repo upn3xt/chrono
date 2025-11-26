@@ -48,6 +48,9 @@ pub fn analyzeVariableDeclaration(node: *ASTNode, symbols: *std.StringHashMap(Ob
             // try symbols.put(name, .{ .identifier = name, .mutable = mutable, .obtype = exp_type });
             // return;
         },
+        .InterpolatedString => {
+            exp_type = .String;
+        },
         else => return error.InvalidType,
     }
 

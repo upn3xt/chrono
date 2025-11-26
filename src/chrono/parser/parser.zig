@@ -163,9 +163,10 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool, syms: *std.Strin
                         if (self.current_token.token_type != .STRING) try self.errorHandler2("Expected string but got: ", self.current_token.token_type);
 
                         const str = self.current_token.lexeme;
-                        const str_ast = self.parseInterpolatedStr(str);
+                        const str_ast = try self.parseInterpolatedStr(str);
 
-                        exp.* = .{ .kind = .InterpolatedString, .data = .{ .InterpolatedString = str_ast } };
+                        var_type = .String;
+                        exp.* = .{ .kind = .InterpolatedString, .data = .{ .InterpolatedString = .{ .str_ast = str_ast } } };
                     },
                     else => try self.errorHandler2("Unexpected symbol. Expected $ got: ", self.current_token.token_type),
                 }
@@ -589,14 +590,20 @@ pub fn parseInterpolatedStr(self: *Parser, str: []const u8) ![]*ASTNode {
     // parse
     // return array of expressions
 
+    var arr_inter = std.array_list.Managed(*ASTNode).init(self.allocator);
+
     const linemap = std.StringHashMap(usize).init(self.allocator);
-    const lexer = Lexer.init(str, linemap);
+    var lexer = Lexer.init(str, linemap);
 
     const tokens = try lexer.tokens();
 
+    for (tokens) |value| {
+        std.debug.print("[TOKEN]: {s}   [TYPE]: {}\n", .{ value.lexeme, value.token_type });
+    }
+
     var i: usize = 0;
-    while (true) {
-        if (i >= tokens.len) try self.errorHandler2("Index out of bounds while parsing string.", .{});
+    while (i < tokens.len) {
+        //try self.errorHandler2("Index out of bounds while parsing string.", .{});
         var token = tokens[i];
         switch (token.token_type) {
             .SYMBOL => |sym| {
@@ -605,26 +612,45 @@ pub fn parseInterpolatedStr(self: *Parser, str: []const u8) ![]*ASTNode {
                         i += 1;
                         token = tokens[i];
                         switch (token.token_type) {
-                            .STRING => {},
-                            .NUMBER => {},
+                            .STRING => {
+                                const strstr = token.lexeme;
+                                std.debug.print("{s}\n", .{token.lexeme});
+                                const str_node = try self.allocator.create(ASTNode);
+                                str_node.* = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{ .value = strstr } } };
+                                try arr_inter.append(str_node);
+                            },
+                            .NUMBER => {
+                                const num = try std.fmt.parseInt(i32, token.lexeme, 10);
+                                const num_node = try self.allocator.create(ASTNode);
+                                num_node.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = num } } };
+                                try arr_inter.append(num_node);
+                            },
                             .IDENTIFIER => {},
                             .CHAR => {},
                             .BOOL => {},
-                            else => try self.errorHandler2("Unexpected token while parsing string: ", self.current_token.token_type),
+                            .EOF => break,
+                            else => try self.errorHandler2("Unexpected token while parsing string: ", token.token_type),
                         }
 
                         i += 1;
                         token = tokens[i];
-                        if (token.token_type != .SYMBOL) try self.errorHandler2("Unexpected token while parsing string: ", self.current_token.token_type);
-                        if (token.token_type.SYMBOL != .r_curlyBracket) try self.errorHandler2("Expected closing bracket while parsing string: ", self.current_token.token_type);
-
-                        // i+=1;
-                        // token = tokens[i];
+                        if (token.token_type != .SYMBOL) try self.errorHandler2("Expected SYMBOL got : ", token.token_type);
+                        if (token.token_type.SYMBOL != .r_curlyBracket) try self.errorHandler2("Expected closing bracket while parsing string: ", token.token_type);
                     },
-                    else => {},
+                    else => i += 1,
                 }
             },
-            else => {},
+            .IDENTIFIER => {
+                const strstr = token.lexeme;
+                const str_node = try self.allocator.create(ASTNode);
+                str_node.* = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{ .value = strstr } } };
+                try arr_inter.append(str_node);
+            },
+            else => i += 1,
         }
+
+        i += 1;
     }
+
+    return arr_inter.items;
 }

@@ -1,3 +1,3 @@
-const name = "Next"
+const interpol = $"Hello {1}";
 
-const result = $"My name is {name}";
+// const interpol = Hello {world};
