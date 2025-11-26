@@ -4,4 +4,4 @@ const Object = @This();
 
 identifier: []const u8,
 obtype: Type = undefined,
-mutable: ?bool = null,
+mutable: bool = false,

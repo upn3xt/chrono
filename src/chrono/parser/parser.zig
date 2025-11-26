@@ -301,7 +301,13 @@ pub fn parseAssignment(self: *Parser, syms: *std.StringHashMap(Object)) !*ASTNod
                         try args.append(numnode);
                         try self.advance();
                     },
-                    .IDENTIFIER => {},
+                    .IDENTIFIER => {
+                        const var_ref = try self.allocator.create(ASTNode);
+                        const variable = syms.get(self.current_token.lexeme) orelse return error.ObjectNull;
+                        var_ref.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .mutable = variable.mutable, .name = self.current_token.lexeme, .var_type = variable.obtype } } };
+                        try args.append(var_ref);
+                        try self.advance();
+                    },
                     .SYMBOL => |s| if (s == .r_roundBracket) {
                         try self.advance();
                         break;

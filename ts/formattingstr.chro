@@ -1,5 +1,7 @@
 fn main() void {
   const interpol = "Hello {1}";
+  const x = 1;
+  printf(x);
 }
 // const a = $"Hello {interpol}";
 

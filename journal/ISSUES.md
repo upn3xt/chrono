@@ -76,3 +76,8 @@ String interpolation turned out to be more simpler than I thought. However, with
 to a variable and then let it unwrapp.
 
 But other types suchs as integers have no problem with that and now all that's left is make the llvm generate the code.
+
+
+## String interpolation(corrupted memory)
+
+While I managed to get the llvm API to print the stuff, I just have garbage or straight up "nothing". This is a minor issue that when solved will be 50% progress to string interpolation.

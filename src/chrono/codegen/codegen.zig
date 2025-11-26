@@ -66,7 +66,7 @@ pub fn walk(self: *Codegen, nodes: []*ASTNode, module: ModuleRef, context: Conte
         switch (node.*.kind) {
             .FunctionDeclaration => try self.createFunction(node, context, module, builder, &global_fns),
             .VariableDeclaration => try self.createVariable(node, context, module, builder, &global_vars),
-            .FunctionReference => try self.functionCall(node, context, module, builder, &global_fns),
+            .FunctionReference => try self.functionCall(node, context, module, builder, &global_fns, &global_vars),
             else => unreachable,
         }
     }
@@ -207,7 +207,7 @@ pub fn createFunction(self: *Codegen, node: *ASTNode, context: ContextRef, modul
             switch (b.kind) {
                 .VariableDeclaration => try self.createVariable(b, context, module, builder, &xvars),
                 .Assignment => try self.reassignment(b, context, module, builder, &xvars),
-                .FunctionReference => try self.functionCall(b, context, module, builder, funcs),
+                .FunctionReference => try self.functionCall(b, context, module, builder, funcs, &xvars),
                 .Return => break,
                 else => unreachable,
             }
@@ -271,7 +271,7 @@ pub fn createFunction(self: *Codegen, node: *ASTNode, context: ContextRef, modul
         switch (b.kind) {
             .VariableDeclaration => try self.createVariable(b, context, module, builder, &xvars),
             .Assignment => try self.reassignment(b, context, module, builder, &xvars),
-            .FunctionReference => try self.functionCall(b, context, module, builder, funcs),
+            .FunctionReference => try self.functionCall(b, context, module, builder, funcs, &xvars),
             .Return => break,
             else => unreachable,
         }
@@ -282,7 +282,7 @@ pub fn createFunction(self: *Codegen, node: *ASTNode, context: ContextRef, modul
     _ = llvm.LLVMBuildRet(builder, ret_val);
 }
 
-pub fn functionCall(self: *Codegen, node: *ASTNode, context: ContextRef, module: ModuleRef, builder: BuilderRef, funcmap: *std.StringHashMap(Function)) !void {
+pub fn functionCall(self: *Codegen, node: *ASTNode, context: ContextRef, module: ModuleRef, builder: BuilderRef, funcmap: *std.StringHashMap(Function), vars: *std.StringHashMap(ValueRef)) !void {
     const nfunc = node.*.data.FunctionReference;
     const cname = try std.mem.Allocator.dupe(self.allocator, u8, nfunc.name);
 
@@ -348,6 +348,42 @@ pub fn functionCall(self: *Codegen, node: *ASTNode, context: ContextRef, module:
                 var indices = [_]ValueRef{llvm.LLVMConstInt(llvm.LLVMInt8TypeInContext(context), @intCast(arg.*.data.CharLiteral.value), 0)};
 
                 try args.append(llvm.LLVMBuildGEP2(builder, ty, char, &indices[0], 1, "sm"));
+            },
+            .VariableReference => {
+                const var_ref = arg.*.data.VariableReference;
+
+                const ref = vars.get(var_ref.name) orelse return error.VarNull;
+                try args.append(ref);
+                // switch (var_ref.var_type) {
+                //     .Int => {
+                //         const num = arg.*.data.NumberLiteral.value;
+                //         const xnum = llvm.LLVMConstInt(llvm.LLVMInt32TypeInContext(context), @intCast(num), 0);
+                //         try args.append(xnum);
+                //     },
+                //     .String => {
+                //         const str = arg.*.data.StringLiteral.value;
+                //         const xstr = llvm.LLVMConstString(str.ptr, @intCast(str.len), 0);
+                //         try args.append(xstr);
+                //     },
+                //     else => unreachable,
+                // }
+            },
+            .InterpolatedString => {
+                for (arg.*.data.InterpolatedString.str_ast) |ast| {
+                    switch (ast.*.kind) {
+                        .NumberLiteral => {
+                            const num = ast.*.data.NumberLiteral.value;
+                            const xnum = llvm.LLVMConstInt(llvm.LLVMInt32TypeInContext(context), @intCast(num), 0);
+                            try args.append(xnum);
+                        },
+                        .StringLiteral => {
+                            const str = ast.*.data.StringLiteral.value;
+                            const xstr = llvm.LLVMConstString(str.ptr, @intCast(str.len), 0);
+                            try args.append(xstr);
+                        },
+                        else => unreachable,
+                    }
+                }
             },
             else => unreachable,
         }
