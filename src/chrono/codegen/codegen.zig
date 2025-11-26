@@ -83,6 +83,7 @@ pub fn definePrintf(_: *Codegen, _: *ASTNode, context: ContextRef, module: Modul
 
     try map.put("printf", .{ .func = printf_func, .func_type = printf_type, .args = null, .args_len = 0 });
 }
+
 pub fn createVariable(self: *Codegen, node: *ASTNode, context: ContextRef, module: ModuleRef, builder: llvm.LLVMBuilderRef, map: *std.StringHashMap(ValueRef)) !void {
     if (node.*.kind != .VariableDeclaration) {
         std.debug.print("{}\n", .{node.*.kind});
@@ -131,6 +132,18 @@ pub fn createVariable(self: *Codegen, node: *ASTNode, context: ContextRef, modul
             if (varvar.mutable) _ = llvm.LLVMBuildStore(builder, value, variable);
             try map.put(cname, variable);
         },
+        .StringLiteral => {
+            const i8type = llvm.LLVMInt8TypeInContext(context);
+            const variable = llvm.LLVMBuildAlloca(builder, i8type, cname.ptr);
+
+            const str_value = try self.allocator.dupe(u8, expression.data.StringLiteral.value);
+            const value = llvm.LLVMBuildGlobalStringPtr(builder, str_value.ptr, "");
+
+            if (varvar.mutable)
+                _ = llvm.LLVMBuildStore(builder, value, variable);
+            try map.put(cname, variable);
+        },
+        .InterpolatedString => {},
         else => unreachable,
     }
 }

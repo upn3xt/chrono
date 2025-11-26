@@ -1,4 +1,6 @@
-const interpol = $"Hello {1}";
-const a = $"Hello {interpol}";
+fn main() void {
+  const interpol = "Hello {1}";
+}
+// const a = $"Hello {interpol}";
 
 // const interpol = Hello {world};
