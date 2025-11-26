@@ -81,3 +81,8 @@ But other types suchs as integers have no problem with that and now all that's l
 ## String interpolation(corrupted memory)
 
 While I managed to get the llvm API to print the stuff, I just have garbage or straight up "nothing". This is a minor issue that when solved will be 50% progress to string interpolation.
+
+
+## Code generator refactor or remake
+
+The code generator needs improvement and documentation.
