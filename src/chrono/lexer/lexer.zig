@@ -158,22 +158,22 @@ pub fn next(self: *Lexer) !Token {
         return Token{ .lexeme = lexeme, .token_type = .NEWLINE };
     }
 
-    if (current_char == '$') {
-        _ = self.advance();
-        if (current_char == '"') {
-            _ = self.advance();
-            while (true) {
-                const char2 = self.peek();
-                if (char2 == null or char2.? == '"') break;
-                _ = self.advance();
-            }
-
-            _ = self.advance();
-
-            const lexeme = std.mem.trim(u8, self.input[start_pos..self.pos], "\"");
-            return Token{ .lexeme = lexeme, .token_type = .{ .SYMBOL = .inter } };
-        }
-    }
+    // if (current_char == '$') {
+    //     _ = self.advance();
+    //     if (current_char == '"') {
+    //         _ = self.advance();
+    //         while (true) {
+    //             const char2 = self.peek();
+    //             if (char2 == null or char2.? == '"') break;
+    //             _ = self.advance();
+    //         }
+    //
+    //         _ = self.advance();
+    //
+    //         const lexeme = std.mem.trim(u8, self.input[start_pos..self.pos], "\"");
+    //         return Token{ .lexeme = lexeme, .token_type = .INTERSTRING };
+    //     }
+    // }
 
     _ = self.advance();
     const lexeme = self.input[start_pos..self.pos];
@@ -181,11 +181,6 @@ pub fn next(self: *Lexer) !Token {
 }
 
 pub fn skipForExtra(_: *Lexer, char: u8) bool {
-    // if (char == '\n') {
-    //     self.line += 1;
-    //     // self.line_map.put(self.line, )
-    //     return true;
-    // }
     if (char == ' ' or char == '\r' or char == '\t') {
         return true;
     } else return false;
@@ -224,6 +219,7 @@ pub fn whichSyboml(_: *Lexer, char: u8) ?Token.TokenType {
         '}' => return Token.TokenType{ .SYMBOL = .r_curlyBracket },
         '[' => return Token.TokenType{ .SYMBOL = .l_bracket },
         ']' => return Token.TokenType{ .SYMBOL = .r_bracket },
+        '$' => return Token.TokenType{ .SYMBOL = .inter },
         else => return null,
     }
 }
@@ -246,6 +242,7 @@ pub fn isSymbol(_: *Lexer, char: u8) bool {
         char == '(' or
         char == ')' or
         char == '&' or
+        char == '$' or
         char == '_')
     {
         return true;

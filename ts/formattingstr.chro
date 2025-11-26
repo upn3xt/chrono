@@ -1,3 +1,4 @@
 const interpol = $"Hello {1}";
+const a = $"Hello {interpol}";
 
 // const interpol = Hello {world};

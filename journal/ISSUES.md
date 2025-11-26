@@ -67,3 +67,12 @@ technique of formatting. Either that or C's native way of formatting.
 
 This is related and way better title for the last 2 points. I've been making changes and updates to now use the `$ AKA inter` to activate a new ast node called InterpolatedString.
 Will work on it and make it a thing.
+
+
+## String interpolation(the first odd case)
+
+String interpolation turned out to be more simpler than I thought. However, with the current lexer and tokens, theres a case for strings in the interpolation. Since the symbols 
+`"` are trimmed the content within it is also removed. Also it finds EOF early and one of the symbols `}` disappears. The solution for this would be to only assign the string value
+to a variable and then let it unwrapp.
+
+But other types suchs as integers have no problem with that and now all that's left is make the llvm generate the code.

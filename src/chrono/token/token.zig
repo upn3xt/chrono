@@ -17,6 +17,7 @@ pub const TokenType = union(enum) {
     EOF,
     COMMENT,
     NEWLINE,
+    // INTERSTRING,
 };
 
 pub const TNumber = enum { int, float, double };
