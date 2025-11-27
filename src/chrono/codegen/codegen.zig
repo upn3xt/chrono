@@ -321,28 +321,24 @@ pub fn functionCall(self: *Codegen, node: *ASTNode, context: ContextRef, module:
                 try args.append(llvm.LLVMBuildGEP2(builder, ty, char, &indices[0], 1, "sm"));
             },
             .VariableReference => {
+                _ = vars;
                 const var_ref = arg.*.data.VariableReference;
 
                 const name = try self.allocator.dupe(u8, var_ref.name);
                 const ref = vars.get(name) orelse return error.VarNull;
-                try args.append(ref);
-            },
-            .InterpolatedString => {
-                for (arg.*.data.InterpolatedString.str_ast) |ast| {
-                    switch (ast.*.kind) {
-                        .NumberLiteral => {
-                            const num = ast.*.data.NumberLiteral.value;
-                            const xnum = llvm.LLVMConstInt(llvm.LLVMInt32TypeInContext(context), @intCast(num), 0);
-                            try args.append(xnum);
-                        },
-                        .StringLiteral => {
-                            const str = ast.*.data.StringLiteral.value;
-                            const xstr = llvm.LLVMConstString(str.ptr, @intCast(str.len), 0);
-                            try args.append(xstr);
-                        },
-                        else => unreachable,
-                    }
-                }
+
+                const ty = switch (var_ref.var_type) {
+                    .Int => llvm.LLVMInt32TypeInContext(context),
+                    .String => llvm.LLVMInt8TypeInContext(context),
+                    else => null,
+                };
+
+                const indices = switch (var_ref.var_type) {
+                .Int => [_]ValueRef{ llvm.LLVMConstInt(llvm.LLVMInt32TypeInContext(context), arg.*.data.NumberLiteral.value, 0)},
+                .String => [_]ValueRef{ llvm.},
+                else => null,
+                        }
+                        try args.append();
             },
             else => unreachable,
         }

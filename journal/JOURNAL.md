@@ -464,3 +464,9 @@ As this is done. I still have to work on better errors. I need a compiler error 
 
 Handle all type cases and now we got better errors. Since I made the Issues.md I've hardly been writing anything of use in the journal. That's good but also feel bad that can't be 
 expressin my feeling here anymore. Since all the frustation and solves are concentraded in the issues in a better manner. Anyway. Keeping this project going is fun.
+
+
+## It's getting confusing 
+
+Been working on printing all native types but man when I tell you it's getting confusing. I'm having a hard time keeping up with what's happening in the code. But I can still make 
+stuff happen, jus saying.

@@ -1,7 +1,7 @@
 fn main() void {
   const interpol = "Hello {1}";
   const x = 1;
-  printf(interpol);
+  printf('A');
 }
 // const a = $"Hello {interpol}";
 
