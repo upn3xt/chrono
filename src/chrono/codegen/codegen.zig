@@ -249,9 +249,6 @@ pub fn createFunction(self: *Codegen, node: *ASTNode, context: ContextRef, modul
     const params_ptr = &llvmparams.items[0];
     const func_type = llvm.LLVMFunctionType(llvm.LLVMInt32TypeInContext(context), params_ptr, @intCast(llvmparams.items.len), 0) orelse return error.FnTypeNull;
 
-    // const func_type_str = llvm.LLVMPrintTypeToString(func_type);
-    // std.debug.print("func_type: {s}\n", .{func_type_str});
-
     const function = llvm.LLVMAddFunction(module, cname.ptr, func_type);
     llvm.LLVMSetFunctionCallConv(function, 0);
 
@@ -321,7 +318,6 @@ pub fn functionCall(self: *Codegen, node: *ASTNode, context: ContextRef, module:
                 try args.append(llvm.LLVMBuildGEP2(builder, ty, char, &indices[0], 1, "sm"));
             },
             .VariableReference => {
-                _ = vars;
                 const var_ref = arg.*.data.VariableReference;
 
                 const name = try self.allocator.dupe(u8, var_ref.name);
@@ -333,12 +329,16 @@ pub fn functionCall(self: *Codegen, node: *ASTNode, context: ContextRef, module:
                     else => null,
                 };
 
-                const indices = switch (var_ref.var_type) {
-                .Int => [_]ValueRef{ llvm.LLVMConstInt(llvm.LLVMInt32TypeInContext(context), arg.*.data.NumberLiteral.value, 0)},
-                .String => [_]ValueRef{ llvm.},
-                else => null,
-                        }
-                        try args.append();
+                const arg_ref = try self.allocator.create(ASTNode);
+
+                arg_ref.* = arg.*;
+
+                var indices = switch (var_ref.var_type) {
+                    .Int => [_]ValueRef{llvm.LLVMConstInt(llvm.LLVMInt32TypeInContext(context), @intCast(arg_ref.*.data.NumberLiteral.value), 0)},
+                    .String => [_]ValueRef{llvm.LLVMConstStringInContext(context, arg_ref.*.data.StringLiteral.value.ptr, @intCast(arg_ref.*.data.StringLiteral.value.len), 0)},
+                    else => [1]ValueRef{llvm.LLVMConstInt(llvm.LLVMInt32TypeInContext(context), 0, 0)},
+                };
+                try args.append(llvm.LLVMBuildGEP2(builder, ty, ref, &indices[0], 1, ""));
             },
             else => unreachable,
         }
