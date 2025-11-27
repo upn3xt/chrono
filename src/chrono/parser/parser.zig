@@ -163,10 +163,10 @@ pub fn parseVariableDeclaration(self: *Parser, isMutable: bool, syms: *std.Strin
                         if (self.current_token.token_type != .STRING) try self.errorHandler2("Expected string but got: ", self.current_token.token_type);
 
                         const str = self.current_token.lexeme;
-                        const str_ast = try self.parseInterpolatedStr(str);
+                        const str_parsed = try self.parseInterpolatedStr(str, syms);
 
                         var_type = .String;
-                        exp.* = .{ .kind = .InterpolatedString, .data = .{ .InterpolatedString = .{ .str_ast = str_ast } } };
+                        exp.* = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{ .value = str_parsed } } };
                     },
                     else => try self.errorHandler2("Unexpected symbol. Expected $ got: ", self.current_token.token_type),
                 }
@@ -591,10 +591,10 @@ pub fn h_getType(_: *Parser, elem: []const u8) ?Type {
     return null;
 }
 
-pub fn parseInterpolatedStr(self: *Parser, str: []const u8) ![]*ASTNode {
+pub fn parseInterpolatedStr(self: *Parser, str: []const u8, syms: *std.StringHashMap(Object)) ![]const u8 {
     // tokenize
     // parse
-    // return array of expressions
+    // make new string
 
     var arr_inter = std.array_list.Managed(*ASTNode).init(self.allocator);
 
@@ -619,10 +619,8 @@ pub fn parseInterpolatedStr(self: *Parser, str: []const u8) ![]*ASTNode {
                         token = tokens[i];
                         switch (token.token_type) {
                             .STRING => {
-                                const strstr = token.lexeme;
-                                std.debug.print("{s}\n", .{token.lexeme});
                                 const str_node = try self.allocator.create(ASTNode);
-                                str_node.* = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{ .value = strstr } } };
+                                str_node.* = .{ .kind = .StringLiteral, .data = .{ .StringLiteral = .{ .value = token.lexeme } } };
                                 try arr_inter.append(str_node);
                             },
                             .NUMBER => {
@@ -631,9 +629,23 @@ pub fn parseInterpolatedStr(self: *Parser, str: []const u8) ![]*ASTNode {
                                 num_node.* = .{ .kind = .NumberLiteral, .data = .{ .NumberLiteral = .{ .value = num } } };
                                 try arr_inter.append(num_node);
                             },
-                            .IDENTIFIER => {},
-                            .CHAR => {},
-                            .BOOL => {},
+                            .IDENTIFIER => {
+                                const variable = syms.get(token.lexeme) orelse return error.VarNull;
+                                const ref_node = try self.allocator.create(ASTNode);
+                                ref_node.* = .{ .kind = .VariableReference, .data = .{ .VariableReference = .{ .name = variable.identifier, .mutable = variable.mutable, .var_type = variable.obtype } } };
+                                try arr_inter.append(ref_node);
+                            },
+                            .CHAR => {
+                                const char_node = try self.allocator.create(ASTNode);
+                                char_node.* = .{ .kind = .CharLiteral, .data = .{ .CharLiteral = .{ .value = token.lexeme[0] } } };
+                                try arr_inter.append(char_node);
+                            },
+                            .BOOL => {
+                                // const result = if (std.mem.eql(u8, token.lexeme, "true")) true else if (std.mem.eql(u8, token.lexeme, "false")) false;
+                                // const b_node = try self.allocator.create(ASTNode);
+                                // b_node.* = .{ .kind = .Bool, .data = .{ .} }
+
+                            },
                             .EOF => break,
                             else => try self.errorHandler2("Unexpected token while parsing string: ", token.token_type),
                         }
@@ -658,5 +670,21 @@ pub fn parseInterpolatedStr(self: *Parser, str: []const u8) ![]*ASTNode {
         i += 1;
     }
 
-    return arr_inter.items;
+    // var string_final = try std.array_list.Managed(u8).init(self.allocator);
+    var string_fmt: [1024]u8 = undefined;
+
+    for (arr_inter.items) |item| {
+        switch (item.*.kind) {
+            .StringLiteral => {},
+            .NumberLiteral => {
+                const num = item.*.data.NumberLiteral.value;
+                _ = try std.fmt.bufPrint(&string_fmt, "{}", .{num});
+            },
+            .VariableReference => {},
+            .CharLiteral => {},
+            else => unreachable,
+        }
+    }
+
+    return &string_fmt;
 }

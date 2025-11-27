@@ -287,43 +287,18 @@ pub fn functionCall(self: *Codegen, node: *ASTNode, context: ContextRef, module:
     const cname = try std.mem.Allocator.dupe(self.allocator, u8, nfunc.name);
 
     const function = llvm.LLVMGetNamedFunction(module, cname.ptr) orelse return error.FunctionNull;
-    //
+
     const func_type = llvm.LLVMGetCalledFunctionType(function);
-    // const func_type_str = llvm.LLVMPrintTypeToString(func_type);
-    // std.debug.print("func_type: {s}\n", .{func_type_str});
-    //
-    // const s1 = llvm.LLVMPrintTypeToString(func_type);
-    // const s2 = llvm.LLVMPrintTypeToString(llvm.LLVMTypeOf(function));
-    // const testx = llvm.LLVMPointerType(func_type, 0);
-    // std.debug.print("testx: {s}\n", .{llvm.LLVMPrintTypeToString(testx)});
-    // // std.debug.print("func_type: {s}\nval_type: {s}\n", .{ s1, s2 });
-    // llvm.LLVMDisposeMessage(s1);
-    // llvm.LLVMDisposeMessage(s2);
-
-    // get function type (unwrap pointer-to-func if necessary)
-    // var t = llvm.LLVMTypeOf(function);
-    // if (llvm.LLVMGetTypeKind(t) == llvm.LLVMPointerTypeKind) {
-    //     t = llvm.LLVMGetElementType(t);
-    //     if (t == null) return error.FnTypeNull;
-    // }
-    // std.debug.print("t value: {s}\n", .{llvm.LLVMPrintTypeToString(t).?});
-
-    // const x = llvm.LLVMGetCalledFunctionType(function);
-    // const fn_type = llvm.LLVMGetElementType(llvm.LLVMTypeOf(function));
-    // std.debug.print(" x value: {s}\n", .{llvm.LLVMPrintTypeToString(x)});
-
     if (llvm.LLVMGetInsertBlock(builder) == null) {
         return error.BuilderNotPositioned;
     }
 
     var args = std.array_list.Managed(ValueRef).init(self.allocator);
-    // defer args.deinit();
 
     for (nfunc.arguments) |arg| {
         switch (arg.*.kind) {
             .NumberLiteral => {
                 const num = llvm.LLVMConstInt(llvm.LLVMInt32TypeInContext(context), @intCast(arg.*.data.NumberLiteral.value), 0);
-                // std.debug.print("Arg ptr: {*}\n", .{@intFromPtr(num.?)});
                 try args.append(num);
             },
             .StringLiteral => {
@@ -331,10 +306,6 @@ pub fn functionCall(self: *Codegen, node: *ASTNode, context: ContextRef, module:
                 const str = llvm.LLVMBuildGlobalStringPtr(builder, strclean.ptr, "name");
 
                 const array_type = llvm.LLVMTypeOf(str);
-                // const element_type = llvm.LLVMGetElementType(llvm.LLVMTypeOf(str));
-                // const ty = llvm.LLVMPrintTypeToString(element_type);
-                // std.debug.print("str: {s}\nelement_type: {s}\n", .{ llvm.LLVMPrintTypeToString(array_type), ty });
-
                 const zero = llvm.LLVMConstInt(llvm.LLVMInt32TypeInContext(context), 0, 0);
                 var indices = [_]ValueRef{ zero, zero };
 
@@ -352,21 +323,9 @@ pub fn functionCall(self: *Codegen, node: *ASTNode, context: ContextRef, module:
             .VariableReference => {
                 const var_ref = arg.*.data.VariableReference;
 
-                const ref = vars.get(var_ref.name) orelse return error.VarNull;
+                const name = try self.allocator.dupe(u8, var_ref.name);
+                const ref = vars.get(name) orelse return error.VarNull;
                 try args.append(ref);
-                // switch (var_ref.var_type) {
-                //     .Int => {
-                //         const num = arg.*.data.NumberLiteral.value;
-                //         const xnum = llvm.LLVMConstInt(llvm.LLVMInt32TypeInContext(context), @intCast(num), 0);
-                //         try args.append(xnum);
-                //     },
-                //     .String => {
-                //         const str = arg.*.data.StringLiteral.value;
-                //         const xstr = llvm.LLVMConstString(str.ptr, @intCast(str.len), 0);
-                //         try args.append(xstr);
-                //     },
-                //     else => unreachable,
-                // }
             },
             .InterpolatedString => {
                 for (arg.*.data.InterpolatedString.str_ast) |ast| {
@@ -391,48 +350,12 @@ pub fn functionCall(self: *Codegen, node: *ASTNode, context: ContextRef, module:
 
     if (args.items.len != nfunc.arguments.len) return error.ArgumentCountMistach;
 
-    // // optional: verify types match param types
-    // for (0..args.items.len) |i| {
-    //     const expected_param = llvm.LLVMGetParam(function, @intCast(i));
-    //     const expected = llvm.LLVMTypeOf(expected_param);
-    //     const actual = llvm.LLVMTypeOf(args.items[i]);
-    //     if (expected != actual) return error.ArgumentTypeMismatch;
-    // }
-
     var call: ValueRef = null;
     if (args.items.len == 0) {
         call = llvm.LLVMBuildCall2(builder, func_type, function, null, 0, cname.ptr);
     } else {
-        // std.debug.print("Builder pointer: {*}\n", .{@intFromPtr(builder.?)});
-        // std.debug.print("function type str: {*}\n", .{llvm.LLVMPrintTypeToString(fn_type).?});
         std.debug.print("func_type pointer: {p}\n", .{func_type.?});
-        // std.debug.print("function pointer: {*}\n", .{@intFromPtr(function)});
-        // std.debug.print("Arguments pointer: {*}\n", .{@intFromPtr(args.items.ptr)});
-        // std.debug.print("Args count: {}\n", .{@as(c_uint, @intCast(args.items.len))});
-        // std.debug.print("Name pointer: {*}\n", .{@intFromPtr(cname.ptr)});
-        //
-        // std.debug.assert(args.items.len == nfunc.arguments.len);
-        // for (args.items) |a| {
-        //     std.debug.assert(a != null);
-        // }
 
-        // const result =
-        //     \\ builder: 0x{x}
-        //     \\ func_type: 0x{x}
-        //     \\ function: 0x{x}
-        //     \\ args.items.ptr: 0x{x}
-        //     \\ argument length: {}
-        //     \\ cname.ptr: 0x{x}
-        //     \\
-        // ;
-        // std.debug.print(result, .{
-        //     @intFromPtr(builder),
-        //     @intFromPtr(func_type),
-        //     @intFromPtr(function),
-        //     @intFromPtr(args.items.ptr),
-        //     @as(c_uint, @intCast(args.items.len)),
-        //     @intFromPtr(cname.ptr),
-        // });
         if (std.mem.eql(u8, cname, "printf")) {
             const ff = funcmap.get("printf") orelse return error.PrintfNotDefined;
             call = llvm.LLVMBuildCall2(builder, ff.func_type, ff.func, &args.items[0], 1, "");
@@ -442,8 +365,6 @@ pub fn functionCall(self: *Codegen, node: *ASTNode, context: ContextRef, module:
         const functionget = funcmap.get(cname) orelse return error.FunctionNull;
         call = llvm.LLVMBuildCall2(builder, functionget.func_type, function, args_ptr, @as(c_uint, @intCast(args.items.len)), cname.ptr) orelse return error.BuildCallFailed;
     }
-
-    // _ = funcmap;
 }
 
 pub fn emitObjectFile(
