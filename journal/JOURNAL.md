@@ -479,3 +479,9 @@ Finally I can do something like:
 ```printf(variable)```
 
 This is awesome- The reason it wasn't possible before was a stupid if statement that wasn't even a part of logic. Always re-check your logic folks.
+
+
+## A video about creating a programming language 
+
+This is a idea that I had for a minute and seems like a great idea, since I'll be talking about programming language creation, how to make it and then talk about Chrono. Though it will 
+not be a chrono video, a little sneek in would be nice.

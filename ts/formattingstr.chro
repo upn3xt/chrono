@@ -1,5 +1,10 @@
-fn main() void {
+fn printname(x: int) void {
+
     const name = "Next";
     const toprint = $"Hello {name}";
     printf(toprint);
+}
+
+fn main() void {
+    printname(1);
 }

@@ -19,13 +19,6 @@ const Function = struct {
     args_len: usize,
 };
 
-const Parameter = struct {
-    name: []const u8,
-    // value: ValueRef,
-    ptype: TypeRef,
-    index: usize,
-};
-
 /// Code generation struct
 const Codegen = @This();
 
@@ -103,7 +96,7 @@ pub fn createVariable(self: *Codegen, node: *ASTNode, context: ContextRef, modul
             const exp = varvar.expression;
             const raw_value = exp.data.NumberLiteral.value;
             const value = llvm.LLVMConstInt(i32_type, @intCast(raw_value), 0);
-            if (varvar.mutable) _ = llvm.LLVMBuildStore(builder, value, variable);
+            _ = llvm.LLVMBuildStore(builder, value, variable);
             try map.put(cname, variable);
         },
         .VariableReference => {
@@ -129,7 +122,7 @@ pub fn createVariable(self: *Codegen, node: *ASTNode, context: ContextRef, modul
             const exp = varvar.expression;
             const raw_value = exp.data.CharLiteral.value;
             const value = llvm.LLVMConstInt(char_type, @intCast(raw_value), 0);
-            if (varvar.mutable) _ = llvm.LLVMBuildStore(builder, value, variable);
+            _ = llvm.LLVMBuildStore(builder, value, variable);
             try map.put(cname, variable);
         },
         .StringLiteral => {
@@ -143,28 +136,6 @@ pub fn createVariable(self: *Codegen, node: *ASTNode, context: ContextRef, modul
 
             _ = llvm.LLVMBuildStore(builder, value, variable);
             try map.put(cname, variable);
-        },
-        .InterpolatedString => {
-            // const str_ast = expression.data.InterpolatedString.str_ast;
-            //
-            // var buf: [1024]u8 = undefined;
-            //
-            // for (str_ast) |elem| {
-            //     switch (elem.*.kind) {
-            //         .StringLiteral => {
-            //             _ = try std.fmt.bufPrint(&buf, "{s}", elem.*.data.StringLiteral.value);
-            //         },
-            //         .VariableReference => {
-            //             const variable = elem.*.data.VariableReference;
-            //             const varx = map.get(variable.name) orelse return error.VarNull;
-            //
-            //             const ref = llvm.LLVMBuildLoad2(builder, llvm.LLVMInt8TypeInContext(context), varx, "");
-            //
-            //
-            //         },
-            //         else => {},
-            //     }
-            // }
         },
         else => unreachable,
     }
@@ -351,25 +322,8 @@ pub fn functionCall(self: *Codegen, node: *ASTNode, context: ContextRef, module:
                     else => null,
                 };
 
-                if (ty == null) std.debug.print("TY IS NULL!\n", .{});
-
                 const arg_ref = llvm.LLVMBuildLoad2(builder, ty, ref, name.ptr);
-                //
-                // const array_type = llvm.LLVMTypeOf(arg_ref);
-                // const zero = llvm.LLVMConstInt(llvm.LLVMInt32TypeInContext(context), 0, 0);
-                // var indices = [_]ValueRef{zero};
-
                 try args.append(arg_ref);
-                // var indices = switch (var_ref.var_type) {
-                //     .Int => [_]ValueRef{llvm.LLVMConstInt(llvm.LLVMInt32TypeInContext(context), @intCast(arg_ref.data.NumberLiteral.value), 0)},
-                //     .String => [_]ValueRef{llvm.LLVMConstStringInContext(context, arg_ref.data.StringLiteral.value.ptr, @intCast(arg_ref.data.StringLiteral.value.len), 0)},
-                //     else => [1]ValueRef{llvm.LLVMConstInt(llvm.LLVMInt32TypeInContext(context), 0, 0)},
-                // };
-
-                // const zero = llvm.LLVMConstInt(llvm.LLVMInt32TypeInContext(context), 0, 0);
-                // var indices = [_]ValueRef{ zero, zero };
-                //
-                // try args.append(llvm.LLVMBuildGEP2(builder, ty, ref, &indices[0], 1, ""));
             },
             else => unreachable,
         }

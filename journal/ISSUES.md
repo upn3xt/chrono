@@ -91,3 +91,12 @@ The code generator needs improvement and documentation.
 ## String interpolation(now a reality)
 
 Now, string interpolation is real and working, along with using variables to print something to the terminal! All that's left is make it work for every type.
+
+
+## Functions, maps and refactor 
+
+While I can use functions, they're still half backed with a return statement missing, a weird parameter case and the fact that I can't place the functions wherever I want.
+
+Plus, there's this thing were maps, at least on the code generator, are becoming unnecessary as I figure more out about LLVM. 
+
+And yes the refactor is needed.
