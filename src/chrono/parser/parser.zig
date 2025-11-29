@@ -312,6 +312,11 @@ pub fn parseAssignment(self: *Parser, syms: *std.StringHashMap(Object)) !*ASTNod
                         try self.advance();
                         break;
                     },
+                    .PUNCTUATION => |p| {
+                        if (p == .comma) {
+                            try self.advance();
+                        } else unreachable;
+                    },
 
                     else => unreachable,
                 }
@@ -675,7 +680,10 @@ pub fn parseInterpolatedStr(self: *Parser, str: []const u8, syms: *std.StringHas
 
     for (arr_inter.items) |item| {
         switch (item.*.kind) {
-            .StringLiteral => {},
+            .StringLiteral => {
+                // const str = item.*.data.StringLiteral.value;
+                // _ = try std.mem.concat(allocator: Allocator, comptime T: type, slices: []const []const T)
+            },
             .NumberLiteral => {
                 const num = item.*.data.NumberLiteral.value;
                 _ = try std.fmt.bufPrint(&string_fmt, "{}", .{num});

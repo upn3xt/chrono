@@ -470,3 +470,12 @@ expressin my feeling here anymore. Since all the frustation and solves are conce
 
 Been working on printing all native types but man when I tell you it's getting confusing. I'm having a hard time keeping up with what's happening in the code. But I can still make 
 stuff happen, jus saying.
+
+
+## Always re-check your logic 
+
+Finally I can do something like: 
+
+```printf(variable)```
+
+This is awesome- The reason it wasn't possible before was a stupid if statement that wasn't even a part of logic. Always re-check your logic folks.

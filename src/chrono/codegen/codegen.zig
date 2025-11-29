@@ -134,13 +134,15 @@ pub fn createVariable(self: *Codegen, node: *ASTNode, context: ContextRef, modul
         },
         .StringLiteral => {
             const i8type = llvm.LLVMInt8TypeInContext(context);
-            const variable = llvm.LLVMBuildAlloca(builder, i8type, cname.ptr);
+            const i8ptr = llvm.LLVMPointerType(i8type, 0);
+
+            const variable = llvm.LLVMBuildAlloca(builder, i8ptr, cname.ptr);
 
             const str_value = try self.allocator.dupe(u8, expression.data.StringLiteral.value);
             const value = llvm.LLVMBuildGlobalStringPtr(builder, str_value.ptr, "");
 
-            if (varvar.mutable)
-                _ = llvm.LLVMBuildStore(builder, value, variable);
+            // if (varvar.mutable)
+            _ = llvm.LLVMBuildStore(builder, value, variable);
             try map.put(cname, variable);
         },
         .InterpolatedString => {},
@@ -300,7 +302,7 @@ pub fn functionCall(self: *Codegen, node: *ASTNode, context: ContextRef, module:
             },
             .StringLiteral => {
                 const strclean = try self.allocator.dupe(u8, arg.*.data.StringLiteral.value);
-                const str = llvm.LLVMBuildGlobalStringPtr(builder, strclean.ptr, "name");
+                const str = llvm.LLVMBuildGlobalStringPtr(builder, strclean.ptr, "");
 
                 const array_type = llvm.LLVMTypeOf(str);
                 const zero = llvm.LLVMConstInt(llvm.LLVMInt32TypeInContext(context), 0, 0);
@@ -329,16 +331,25 @@ pub fn functionCall(self: *Codegen, node: *ASTNode, context: ContextRef, module:
                     else => null,
                 };
 
-                const arg_ref = try self.allocator.create(ASTNode);
+                if (ty == null) std.debug.print("TY IS NULL!\n", .{});
 
-                arg_ref.* = arg.*;
+                const arg_ref = llvm.LLVMBuildLoad2(builder, ty, ref, name.ptr);
+                //
+                // const array_type = llvm.LLVMTypeOf(arg_ref);
+                // const zero = llvm.LLVMConstInt(llvm.LLVMInt32TypeInContext(context), 0, 0);
+                // var indices = [_]ValueRef{zero};
 
-                var indices = switch (var_ref.var_type) {
-                    .Int => [_]ValueRef{llvm.LLVMConstInt(llvm.LLVMInt32TypeInContext(context), @intCast(arg_ref.*.data.NumberLiteral.value), 0)},
-                    .String => [_]ValueRef{llvm.LLVMConstStringInContext(context, arg_ref.*.data.StringLiteral.value.ptr, @intCast(arg_ref.*.data.StringLiteral.value.len), 0)},
-                    else => [1]ValueRef{llvm.LLVMConstInt(llvm.LLVMInt32TypeInContext(context), 0, 0)},
-                };
-                try args.append(llvm.LLVMBuildGEP2(builder, ty, ref, &indices[0], 1, ""));
+                try args.append(arg_ref);
+                // var indices = switch (var_ref.var_type) {
+                //     .Int => [_]ValueRef{llvm.LLVMConstInt(llvm.LLVMInt32TypeInContext(context), @intCast(arg_ref.data.NumberLiteral.value), 0)},
+                //     .String => [_]ValueRef{llvm.LLVMConstStringInContext(context, arg_ref.data.StringLiteral.value.ptr, @intCast(arg_ref.data.StringLiteral.value.len), 0)},
+                //     else => [1]ValueRef{llvm.LLVMConstInt(llvm.LLVMInt32TypeInContext(context), 0, 0)},
+                // };
+
+                // const zero = llvm.LLVMConstInt(llvm.LLVMInt32TypeInContext(context), 0, 0);
+                // var indices = [_]ValueRef{ zero, zero };
+                //
+                // try args.append(llvm.LLVMBuildGEP2(builder, ty, ref, &indices[0], 1, ""));
             },
             else => unreachable,
         }
