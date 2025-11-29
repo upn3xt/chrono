@@ -3,6 +3,7 @@ const std = @import("std");
 const ASTNode = @import("../../chrono/ast/ast.zig").ASTNode;
 const Type = @import("../types/types.zig").Type;
 const Object = @import("../object/object.zig");
+const Data = @import("../object/data.zig");
 
 const IndieAnalyzer = @This();
 
@@ -10,6 +11,8 @@ pub fn getStuff(key: []const u8, symbols: *std.StringHashMap(Object)) ?Object {
     return symbols.get(key);
 }
 pub fn analyzeVariableDeclaration(node: *ASTNode, symbols: *std.StringHashMap(Object)) !void {
+    var data: Data = undefined;
+
     const name = node.*.data.VariableDeclaration.name;
 
     const exp = node.*.data.VariableDeclaration.expression;
@@ -23,9 +26,11 @@ pub fn analyzeVariableDeclaration(node: *ASTNode, symbols: *std.StringHashMap(Ob
     switch (exp.kind) {
         .NumberLiteral => {
             exp_type = .Int;
+            data = .{ .integer = exp.*.data.NumberLiteral.value };
         },
         .StringLiteral => {
             exp_type = .String;
+            data = .{ .string = exp.*.data.StringLiteral.value };
         },
         .CharLiteral => {
             exp_type = .Char;
@@ -63,7 +68,7 @@ pub fn analyzeVariableDeclaration(node: *ASTNode, symbols: *std.StringHashMap(Ob
         return error.TypeMismatch;
     }
 
-    try symbols.put(name, .{ .identifier = name, .mutable = mutable, .obtype = exp_type });
+    try symbols.put(name, .{ .identifier = name, .mutable = mutable, .obtype = exp_type, .data = data });
 }
 
 pub fn analyzeAssignment(node: *ASTNode, symbols: *std.StringHashMap(Object)) !void {
@@ -140,13 +145,13 @@ pub fn analyzeFunctionDeclaration(node: *ASTNode, symbols: *std.StringHashMap(Ob
                         if (parameters_syms.get(p.data.Parameter.name)) |_| {
                             return error.RedeclarationOfParameterError;
                         }
-                        try parameters_syms.put(p.data.Parameter.name, .{ .identifier = p.data.Parameter.name, .mutable = true, .obtype = p.data.Parameter.par_type });
+                        try parameters_syms.put(p.data.Parameter.name, .{ .identifier = p.data.Parameter.name, .mutable = true, .obtype = p.data.Parameter.par_type, .data = .{} });
                     },
                     else => unreachable,
                 }
             }
 
-            try symbols.put(name, .{ .identifier = name, .mutable = false, .obtype = fn_type });
+            try symbols.put(name, .{ .identifier = name, .mutable = false, .obtype = fn_type, .data = .{} });
         },
         else => {},
     }

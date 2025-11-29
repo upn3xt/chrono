@@ -141,11 +141,31 @@ pub fn createVariable(self: *Codegen, node: *ASTNode, context: ContextRef, modul
             const str_value = try self.allocator.dupe(u8, expression.data.StringLiteral.value);
             const value = llvm.LLVMBuildGlobalStringPtr(builder, str_value.ptr, "");
 
-            // if (varvar.mutable)
             _ = llvm.LLVMBuildStore(builder, value, variable);
             try map.put(cname, variable);
         },
-        .InterpolatedString => {},
+        .InterpolatedString => {
+            // const str_ast = expression.data.InterpolatedString.str_ast;
+            //
+            // var buf: [1024]u8 = undefined;
+            //
+            // for (str_ast) |elem| {
+            //     switch (elem.*.kind) {
+            //         .StringLiteral => {
+            //             _ = try std.fmt.bufPrint(&buf, "{s}", elem.*.data.StringLiteral.value);
+            //         },
+            //         .VariableReference => {
+            //             const variable = elem.*.data.VariableReference;
+            //             const varx = map.get(variable.name) orelse return error.VarNull;
+            //
+            //             const ref = llvm.LLVMBuildLoad2(builder, llvm.LLVMInt8TypeInContext(context), varx, "");
+            //
+            //
+            //         },
+            //         else => {},
+            //     }
+            // }
+        },
         else => unreachable,
     }
 }

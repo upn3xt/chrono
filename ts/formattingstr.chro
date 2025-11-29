@@ -1,6 +1,5 @@
 fn main() void {
-  const interpol = "Hello world";
-  const x = 1;
-  printf(x);
-  printf(interpol);
+    const name = "Next";
+    const toprint = $"Hello {name}";
+    printf(toprint);
 }

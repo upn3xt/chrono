@@ -86,3 +86,8 @@ While I managed to get the llvm API to print the stuff, I just have garbage or s
 ## Code generator refactor or remake
 
 The code generator needs improvement and documentation.
+
+
+## String interpolation(now a reality)
+
+Now, string interpolation is real and working, along with using variables to print something to the terminal! All that's left is make it work for every type.

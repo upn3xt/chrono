@@ -608,9 +608,9 @@ pub fn parseInterpolatedStr(self: *Parser, str: []const u8, syms: *std.StringHas
 
     const tokens = try lexer.tokens();
 
-    for (tokens) |value| {
-        std.debug.print("[TOKEN]: {s}   [TYPE]: {}\n", .{ value.lexeme, value.token_type });
-    }
+    // for (tokens) |value| {
+    //     std.debug.print("[TOKEN]: {s}   [TYPE]: {}\n", .{ value.lexeme, value.token_type });
+    // }
 
     var i: usize = 0;
     while (i < tokens.len) {
@@ -675,24 +675,33 @@ pub fn parseInterpolatedStr(self: *Parser, str: []const u8, syms: *std.StringHas
         i += 1;
     }
 
-    // var string_final = try std.array_list.Managed(u8).init(self.allocator);
-    var string_fmt: [1024]u8 = undefined;
+    var string_final = std.array_list.Managed([]u8).init(self.allocator);
 
-    for (arr_inter.items) |item| {
-        switch (item.*.kind) {
+    for (arr_inter.items) |value| {
+        switch (value.*.kind) {
+            .VariableReference => {
+                const vari = value.*.data.VariableReference;
+                const varx = syms.get(vari.name) orelse return error.VarNull;
+
+                switch (varx.obtype) {
+                    .String => {
+                        if (varx.data) |data| {
+                            const result = try std.fmt.allocPrint(self.allocator, "{s}", .{data.string});
+                            try string_final.append(result);
+                        }
+                    },
+                    else => {},
+                }
+            },
             .StringLiteral => {
-                // const str = item.*.data.StringLiteral.value;
-                // _ = try std.mem.concat(allocator: Allocator, comptime T: type, slices: []const []const T)
+                const strv = value.*.data.StringLiteral.value;
+                const result = try std.fmt.allocPrint(self.allocator, "{s} ", .{strv});
+                try string_final.append(result);
             },
-            .NumberLiteral => {
-                const num = item.*.data.NumberLiteral.value;
-                _ = try std.fmt.bufPrint(&string_fmt, "{}", .{num});
-            },
-            .VariableReference => {},
-            .CharLiteral => {},
             else => unreachable,
         }
     }
 
-    return &string_fmt;
+    const r = try std.mem.concat(self.allocator, u8, string_final.items);
+    return r;
 }
