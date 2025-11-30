@@ -100,3 +100,4 @@ While I can use functions, they're still half backed with a return statement mis
 Plus, there's this thing were maps, at least on the code generator, are becoming unnecessary as I figure more out about LLVM. 
 
 And yes the refactor is needed.
+

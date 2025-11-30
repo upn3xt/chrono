@@ -485,3 +485,19 @@ This is awesome- The reason it wasn't possible before was a stupid if statement 
 
 This is a idea that I had for a minute and seems like a great idea, since I'll be talking about programming language creation, how to make it and then talk about Chrono. Though it will 
 not be a chrono video, a little sneek in would be nice.
+
+
+## The future of chrono
+
+Probably will stop working directly on chrono. BUT the future of chrono is different now for a reason. Backend. The LLVM C API is missing a lot of necessary functions and I just found 
+out that the C++ API is more complete but it's a C++ exclusive. I don't properly know C++ nor am up to stop and learn it with a thon of things to consider of both new and old versions 
+of it. And imagine I take more time to remake the compiler and it's still half baked. You problably know where I'm going with this, I'm building my own custom chrono-specific backend 
+framework. A language backend designed for chrono to generate IR and generate code. This is a big decision. But making a language was it's own big decision and here I am.
+
+What I mean to say is that chrono development won't stop. Infact is going to get more active, because now I have to write my own custom thing to get to assembly. From IR to assembly to 
+linker to executable.
+
+It also means no more backwards compatibility with C. And maybe it's a good thing. Maybe it's a start to a good new thing.
+
+
+The future of chrono now is a language that has it's independent compiler that ONLY works for chrono code.
